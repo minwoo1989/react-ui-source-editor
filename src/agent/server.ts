@@ -1,14 +1,19 @@
 // src/agent/server.ts
 import { createServer } from "node:http";
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from "node:fs";
-import { resolve, join, basename } from "node:path";
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from "node:fs";
+import { resolve, join, basename, dirname } from "node:path";
 import { Project } from "ts-morph";
 import { processEdits } from "./apply.js";
+import { fileURLToPath } from "node:url";
 import type { EditRequest } from "../shared/types.js";
+import { landingHtml } from "./bookmarklet.js";
 
 const PROJECT_ROOT = resolve(process.argv[2] ?? process.cwd());
 const PORT = Number(process.env.PORT ?? 4567);
 const BACKUP_DIR = join(PROJECT_ROOT, ".ui-modifier-backups");
+
+// dist/overlay.js sits at the repo root; this module lives in src/agent/.
+const OVERLAY_BUNDLE = resolve(dirname(fileURLToPath(import.meta.url)), "../../dist/overlay.js");
 
 function readBody(req: any): Promise<string> {
   return new Promise((res) => {
@@ -27,6 +32,22 @@ function cors(res: any) {
 const server = createServer(async (req, res) => {
   cors(res);
   if (req.method === "OPTIONS") return res.writeHead(204).end();
+
+  if (req.method === "GET" && (req.url === "/" || req.url === "")) {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    return res.end(landingHtml(PROJECT_ROOT, PORT));
+  }
+
+  // Match on pathname so the bookmarklet's `?<cachebuster>` query is ignored.
+  if (req.method === "GET" && (req.url ?? "").split("?")[0] === "/overlay.js") {
+    if (!existsSync(OVERLAY_BUNDLE)) {
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      return res.end("overlay bundle not found — run: npm run build:overlay");
+    }
+    res.writeHead(200, { "Content-Type": "application/javascript" });
+    return res.end(readFileSync(OVERLAY_BUNDLE));
+  }
+
   if (req.method !== "POST" || req.url !== "/edit") return res.writeHead(404).end();
 
   try {

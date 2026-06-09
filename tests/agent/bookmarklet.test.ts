@@ -1,0 +1,31 @@
+// tests/agent/bookmarklet.test.ts
+import { describe, it, expect } from "vitest";
+import { bookmarkletHref, landingHtml } from "../../src/agent/bookmarklet.js";
+
+describe("bookmarkletHref", () => {
+  it("starts with javascript: and targets /overlay.js on the given port", () => {
+    const href = bookmarkletHref(4567);
+    expect(href.startsWith("javascript:")).toBe(true);
+    expect(href).toContain("localhost:4567/overlay.js");
+  });
+
+  it("embeds Date.now() as a runtime cache-buster expression, not a frozen value", () => {
+    const href = bookmarkletHref(4567);
+    expect(href).toContain("Date.now()");
+  });
+});
+
+describe("landingHtml", () => {
+  it("includes the project root, the port, and the bookmarklet href", () => {
+    const html = landingHtml("/some/root", 4567);
+    expect(html).toContain("/some/root");
+    expect(html).toContain("4567");
+    expect(html).toContain(bookmarkletHref(4567));
+  });
+
+  it("HTML-escapes the project root", () => {
+    const html = landingHtml("/a<b>&c/root", 4567);
+    expect(html).not.toContain("/a<b>&c/root");
+    expect(html).toContain("/a&lt;b&gt;&amp;c/root");
+  });
+});

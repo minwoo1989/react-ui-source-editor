@@ -70,6 +70,7 @@ ${res.instruction}
 ${res.reason}` : `\u274C ${res.message}`;
     };
     return {
+      host,
       setTarget(name, loc) {
         root.getElementById("who").textContent = `${name} \u2014 ${loc}`;
       }
@@ -77,10 +78,14 @@ ${res.reason}` : `\u274C ${res.message}`;
   }
 
   // src/overlay/inspector.ts
-  function createInspector(onSelect) {
+  function createInspector(onSelect, ignore) {
     const hl = document.createElement("div");
     hl.style.cssText = "position:fixed;pointer-events:none;z-index:2147483646;border:2px solid #1677ff;background:rgba(22,119,255,.08);display:none";
     document.body.appendChild(hl);
+    function isOwn(e) {
+      const path = e.composedPath();
+      return path.includes(hl) || !!ignore && path.includes(ignore);
+    }
     function show(el) {
       const r = el.getBoundingClientRect();
       hl.style.display = "block";
@@ -90,13 +95,14 @@ ${res.reason}` : `\u274C ${res.message}`;
       hl.style.height = `${r.height}px`;
     }
     function onMove(e) {
+      if (isOwn(e)) return;
       const el = e.target;
-      if (el && el !== hl) show(el);
+      if (el) show(el);
     }
     function onClick(e) {
+      if (isOwn(e)) return;
       const el = e.target;
       if (!el) return;
-      if (el.closest && el.getRootNode() instanceof ShadowRoot) return;
       e.preventDefault();
       e.stopPropagation();
       onSelect(el);
@@ -137,6 +143,6 @@ ${res.reason}` : `\u274C ${res.message}`;
     }
     current = { file: relativeToSrc(loc.file), line: loc.line, column: loc.column };
     panel.setTarget(componentNameFor(el), `${current.file}:${current.line}`);
-  });
+  }, panel.host);
   console.log("[ui-modifier] overlay ready");
 })();

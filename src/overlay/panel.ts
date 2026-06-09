@@ -48,6 +48,7 @@ export function createPanel(handlers: PanelHandlers) {
   };
 
   return {
+    host,
     setTarget(name: string, loc: string) {
       (root.getElementById("who") as HTMLElement).textContent = `${name} — ${loc}`;
     },

@@ -19,6 +19,6 @@ createInspector((el) => {
   if (!loc) { panel.setTarget(componentNameFor(el), "no source info"); current = null; return; }
   current = { file: relativeToSrc(loc.file), line: loc.line, column: loc.column };
   panel.setTarget(componentNameFor(el), `${current.file}:${current.line}`);
-});
+}, panel.host);
 
 console.log("[ui-modifier] overlay ready");

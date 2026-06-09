@@ -1,6 +1,6 @@
 // src/agent/server.ts
 import { createServer } from "node:http";
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from "node:fs";
 import { resolve, join, basename, dirname } from "node:path";
 import { Project } from "ts-morph";
 import { processEdits } from "./apply.js";
@@ -40,12 +40,18 @@ const server = createServer(async (req, res) => {
 
   // Match on pathname so the bookmarklet's `?<cachebuster>` query is ignored.
   if (req.method === "GET" && (req.url ?? "").split("?")[0] === "/overlay.js") {
-    if (!existsSync(OVERLAY_BUNDLE)) {
+    let bundle: Buffer | undefined;
+    try {
+      bundle = readFileSync(OVERLAY_BUNDLE);
+    } catch {
+      // Missing, or transiently unreadable (e.g. mid-rebuild) — degrade gracefully.
+    }
+    if (!bundle) {
       res.writeHead(404, { "Content-Type": "text/plain" });
       return res.end("overlay bundle not found — run: npm run build:overlay");
     }
     res.writeHead(200, { "Content-Type": "application/javascript" });
-    return res.end(readFileSync(OVERLAY_BUNDLE));
+    return res.end(bundle);
   }
 
   if (req.method !== "POST" || req.url !== "/edit") return res.writeHead(404).end();

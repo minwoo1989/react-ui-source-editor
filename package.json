@@ -13,6 +13,7 @@
     "build:overlay": "esbuild src/overlay/index.ts --bundle --format=iife --outfile=dist/overlay.js"
   },
   "devDependencies": {
+    "@types/node": "^25.9.2",
     "esbuild": "^0.23.0",
     "ts-morph": "^23.0.0",
     "tsx": "^4.22.4",

@@ -13,6 +13,12 @@ describe("bookmarkletHref", () => {
     const href = bookmarkletHref(4567);
     expect(href).toContain("Date.now()");
   });
+
+  it("contains no characters that would break a double-quoted href attribute", () => {
+    const href = bookmarkletHref(4567);
+    expect(href).not.toContain('"');
+    expect(href).not.toContain("&");
+  });
 });
 
 describe("landingHtml", () => {

@@ -1,6 +1,7 @@
 // src/agent/bookmarklet.ts
 
 /** Minimal HTML-escape for text interpolated into the landing page. */
+// Single-quote is intentionally not escaped: all attributes in the template use double-quotes.
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -15,6 +16,7 @@ function escapeHtml(s: string): string {
  * click pulls a fresh (uncached) copy of the bundle.
  */
 export function bookmarkletHref(port: number): string {
+  // snippet is placed RAW into href="...": it must never contain `"` or `&`.
   const snippet =
     `(function(){` +
     `var s=document.createElement('script');` +

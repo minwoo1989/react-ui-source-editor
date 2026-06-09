@@ -154,3 +154,37 @@ concentrate there.
 3. Overlay selection/highlight + edit panel.
 4. Wire communication + HMR reflection end-to-end.
 5. Suggest/diff mode, backup & rollback.
+
+---
+
+## 8. End-to-end verification results (2026-06-09)
+
+Verified against the real `my-react-app/web` app (React 18.2 + antd 5.27.4,
+react-scripts 5.0.1 via CRACO; agent rooted at `web/`, app on :3000).
+
+**`_debugSource` (risk spike) — PASS.** Fibers for the app's own JSX carry
+`_debugSource` in CRACO dev (e.g. `LoginPage.tsx:123`). Walking up from a
+clicked DOM node via `fiber.return` reaches the nearest source-bearing fiber,
+which is the JSX element in the user's `src/`. No babel config change needed.
+Confirmed `columnNumber` is 1-based at the `<` — consistent with `locate`'s
+`column - 1` offset.
+
+**Safe-apply path — PASS.** Clicked the login `<Button>`, set Text, Apply →
+agent rewrote the `.tsx`, created a timestamped backup under
+`.ui-modifier-backups/`, and CRA HMR reflected the new label. Panel showed
+"✅ Applied".
+
+**Bug found & fixed during verify:** the inspector listened on `document` in
+the capture phase and called `stopPropagation` on every click. Clicks inside
+the Shadow-DOM panel are retargeted to the host at the document level, so the
+old `getRootNode() instanceof ShadowRoot` guard never matched — the Apply
+button never received its click. Fixed by detecting own-UI events via
+`composedPath()` (sees through shadow retargeting) and skipping them.
+
+**Environment notes:** the agent runs via `tsx` (native
+`node --experimental-strip-types` does not resolve `.js` import specifiers to
+`.ts` sources); `@types/node` was added so the agent typechecks under `tsc`.
+
+**Not yet exercised in-browser:** the suggest-only path (dynamic prop / emotion
+`css` / `.map()` renders). Its logic is covered by `classify` + `apply` unit
+tests; a live click-through remains a nice-to-have.

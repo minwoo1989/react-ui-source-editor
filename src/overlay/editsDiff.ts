@@ -37,6 +37,7 @@ export function buildEdits(snapshot: InspectOk, state: PanelState): Edit[] {
     }
   }
 
+  // Added rows are emitted after style rows on purpose: on a property-name collision, applyStyle's last-write-wins makes the added value win.
   for (const a of state.added) {
     if (a.property.trim() === "" || a.value.trim() === "") continue;
     edits.push({ kind: "style", property: a.property.trim(), value: parseStyleValue(a.value) });
@@ -48,6 +49,7 @@ export function buildEdits(snapshot: InspectOk, state: PanelState): Edit[] {
     if (changed) edits.push({ kind: "prop", name: "className", value: state.className });
   }
 
+  // text gates on snapshot.text (unlike className) because there is no text-add path: only an existing single text child is editable.
   if (state.text !== null && snapshot.text && state.text !== snapshot.text.value) {
     edits.push({ kind: "text", value: state.text });
   }

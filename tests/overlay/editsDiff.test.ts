@@ -96,4 +96,22 @@ describe("buildEdits", () => {
     expect(buildEdits(snapshot, stateFrom({ text: "bye" }))).toEqual([{ kind: "text", value: "bye" }]);
     expect(buildEdits(snapshot, stateFrom({ text: null }))).toEqual([]);
   });
+
+  it("pins ordering: added row duplicating a changed row emits both, added last", () => {
+    const state = stateFrom({ added: [{ property: "color", value: "blue" }] });
+    state.style[0] = { ...state.style[0], value: "green" };
+    expect(buildEdits(snapshot, state)).toEqual([
+      { kind: "style", property: "color", value: "green" },
+      { kind: "style", property: "color", value: "blue" },
+    ]);
+  });
+
+  it("pins ordering: removed row plus added row of the same name emits styleRemove then style", () => {
+    const state = stateFrom({ added: [{ property: "color", value: "blue" }] });
+    state.style[0] = { ...state.style[0], removed: true };
+    expect(buildEdits(snapshot, state)).toEqual([
+      { kind: "styleRemove", property: "color" },
+      { kind: "style", property: "color", value: "blue" },
+    ]);
+  });
 });

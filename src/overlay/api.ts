@@ -28,11 +28,7 @@ export async function fetchFsListing(path?: string): Promise<FsListing> {
     ? `${AGENT_ORIGIN}/fs?path=${encodeURIComponent(path)}`
     : `${AGENT_ORIGIN}/fs`;
   const res = await fetch(url);
-  return (await res.json()) as FsListing;
-}
-
-/** Make a project-relative path from an absolute _debugSource fileName. */
-export function relativeToSrc(absFile: string): string {
-  const i = absFile.replace(/\\/g, "/").indexOf("/src/");
-  return i >= 0 ? absFile.replace(/\\/g, "/").slice(i + 1) : absFile;
+  const body = await res.json();
+  if (!res.ok) throw new Error((body as { message?: string }).message ?? `fs request failed (${res.status})`);
+  return body as FsListing;
 }

@@ -41,3 +41,31 @@ describe("processEdits", () => {
     expect(processEdits(project, req).status).toBe("error");
   });
 });
+
+describe("processEdits: styleRemove", () => {
+  it("removes a style property end-to-end", () => {
+    const project = new Project({ useInMemoryFileSystem: true });
+    project.createSourceFile("F.tsx", `const C=()=>(<Button style={{ color: "red", marginTop: 8 }}>x</Button>);`);
+    const res = processEdits(project, {
+      file: "F.tsx", line: 1, column: 14,
+      edits: [{ kind: "styleRemove", property: "marginTop" }],
+    });
+    expect(res.status).toBe("applied");
+    if (res.status !== "applied") return;
+    expect(res.newText).not.toContain("marginTop");
+    expect(res.newText).toContain(`color: "red"`);
+  });
+});
+
+describe("processEdits: absolute file paths", () => {
+  it("works when the in-memory file is registered under a windows-style absolute path", () => {
+    const project = new Project({ useInMemoryFileSystem: true });
+    const file = "D:/app/src/App.tsx"; // server normalizes backslashes to forward slashes
+    project.createSourceFile(file, `const C=()=>(<Button>x</Button>);`);
+    const res = processEdits(project, {
+      file, line: 1, column: 14,
+      edits: [{ kind: "style", property: "color", value: "red" }],
+    });
+    expect(res.status).toBe("applied");
+  });
+});

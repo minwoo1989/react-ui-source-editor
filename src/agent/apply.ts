@@ -3,7 +3,7 @@ import { Project, Node, SyntaxKind } from "ts-morph";
 import type { EditRequest, EditResult, Edit } from "../shared/types.js";
 import { locateJsxElement } from "./locate.js";
 import { classifyEdit } from "./classify.js";
-import { applyStyle } from "./applyStyle.js";
+import { applyStyle, removeStyle } from "./applyStyle.js";
 import { applyProp } from "./applyProp.js";
 import { applyText } from "./applyText.js";
 import { unifiedDiff } from "./diff.js";
@@ -14,7 +14,7 @@ function elementFromOpening(opening: Node): Node {
 
 function applyOne(el: Node, edit: Edit): void {
   if (edit.kind === "style") applyStyle(el, edit.property, edit.value);
-  else if (edit.kind === "styleRemove") throw new Error("styleRemove not implemented yet");
+  else if (edit.kind === "styleRemove") removeStyle(el, edit.property);
   else if (edit.kind === "prop") applyProp(el, edit.name, edit.value);
   else applyText(el, edit.value);
 }

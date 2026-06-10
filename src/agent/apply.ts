@@ -14,12 +14,14 @@ function elementFromOpening(opening: Node): Node {
 
 function applyOne(el: Node, edit: Edit): void {
   if (edit.kind === "style") applyStyle(el, edit.property, edit.value);
+  else if (edit.kind === "styleRemove") throw new Error("styleRemove not implemented yet");
   else if (edit.kind === "prop") applyProp(el, edit.name, edit.value);
   else applyText(el, edit.value);
 }
 
 function describe(edit: Edit): string {
   if (edit.kind === "style") return `set style.${edit.property} = ${JSON.stringify(edit.value)}`;
+  if (edit.kind === "styleRemove") return `remove style.${edit.property}`;
   if (edit.kind === "prop") return `set prop ${edit.name} = ${JSON.stringify(edit.value)}`;
   return `set text = ${JSON.stringify(edit.value)}`;
 }

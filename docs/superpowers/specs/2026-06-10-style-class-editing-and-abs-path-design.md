@@ -112,9 +112,13 @@ Panel rework (`src/overlay/panel.ts`):
 
 ## 3. `GET /fs` (Browse)
 
-- `GET /fs?path=<absolute dir>` → `{ path, entries: [{ name, dir }] }`,
-  directories first, `node_modules` and dot-entries excluded. No `path` param →
+- `GET /fs?path=<absolute dir>` → `{ path, parent, entries: [{ name, path, dir }] }`,
+  directories first, `node_modules` and dot-entries excluded; entries carry full
+  absolute paths; `parent` is `""` at drive roots. No `path` param →
   list Windows drive roots. Read-only; never writes, never reads file contents.
+  Browse intentionally has no directory allowlist — the user must reach arbitrary
+  source trees; the write guard lives solely on `/edit`/`/inspect` (extension
+  allowlist + existence).
 - Panel's Browse button opens an in-panel mini file browser: click a directory
   to descend, click a file to fill the path input. Initial location: the
   directory of the current path input value.
@@ -145,3 +149,81 @@ Panel rework (`src/overlay/panel.ts`):
 - Auth on the agent; multi-root allowlists.
 - Deriving the agent origin from the overlay `<script src>` (pre-existing
   known constraint, unchanged).
+
+## Verification
+
+**Date:** 2026-06-10
+
+### Automated gate
+
+- `npx tsc --noEmit`: pass (no errors)
+- `npm test`: 11 test files, 75 tests — all pass
+- `npm run build:overlay`: `dist/overlay.js` 11.7 kb — `git status --porcelain`
+  shows no modification (committed bundle is identical to rebuilt output)
+
+### HTTP E2E (abs-path bug regression)
+
+Target file created at `C:\Users\minwoo\AppData\Local\Temp\ui-mod-e2e\Sample.tsx`
+(outside this repo) with content:
+
+```tsx
+const C = () => (
+  <button style={{ color: "red", marginTop: 8 }} className="old">hello</button>
+);
+export default C;
+```
+
+Agent started: `npx tsx src/agent/server.ts` → listening on port 4567.
+
+**POST /inspect** `{file:"C:\\…\\Sample.tsx", line:2, column:3}`
+→ `{status:"ok", styleEditable:true, style:[{property:"color",value:"red",editable:true},{property:"marginTop",value:"8",editable:true}], className:{value:"old",editable:true}, text:{value:"hello",editable:true}}`
+
+**POST /edit** with edits `[styleRemove color, style marginTop→16, prop className→"new-cls", text→"world"]`
+→ `{status:"applied", …}`. On-disk file after edit:
+
+```tsx
+const C = () => (
+  <button style={{ marginTop: 16 }} className="new-cls">world</button>
+);
+export default C;
+```
+
+Confirms: `marginTop: 16` present, `color` removed, `className="new-cls"`, `>world<`.
+The agent wrote to the ABSOLUTE path outside its own repo — the original ENOENT bug is fixed.
+
+**Backup:** `Sample.tsx.1781084945968-105893963249000.bak` appeared in this
+repo's `.ui-modifier-backups/`; target temp dir contained no backup files.
+
+**Negative checks:**
+- `POST /edit {file:"D:\\definitely\\missing\\X.tsx", …}` → 500 `{status:"error", message:"file not found: D:\\definitely\\missing\\X.tsx"}`
+- `POST /edit {file:"…\\note.txt", …}` → 500 `{status:"error", message:"not an editable source file: C:\\…\\note.txt"}`
+
+Agent stopped (PID killed); port 4567 confirmed free; temp dir deleted.
+
+### Manual browser checklist (out of automated scope)
+
+Suggested target app: `D:\Projects\test\test-multi-window` (antd5 + Vite).
+
+- [ ] Drop bookmarklet → overlay loads, click a component → path input auto-fills
+      with `_debugSource` absolute path
+- [ ] `/inspect` round-trip: style rows render with correct property/value,
+      className and Text fields populated
+- [ ] Edit style row value, remove a property, change className, change text →
+      Apply → HMR reload shows the change in the browser
+- [ ] Browse button: navigate the file tree via `/fs`, select a `.tsx` file →
+      path input updates, `/inspect` fires again
+- [ ] Read-only rendering: select an element with `style={styles}` (variable
+      reference) or `className={cls}` (expression) — rows render greyed/disabled,
+      Apply is a no-op for those fields
+
+### Known limitations
+
+1. **Mixed EOL after ts-morph insertion.** ts-morph inserts LF on newly added
+   lines inside CRLF files, producing mixed line endings until a formatter
+   normalizes them. Pre-existing behaviour; no fix planned here.
+2. **Triplicated JSX helpers.** `getOpening`/`getAttribute` logic is repeated
+   across `applyStyle.ts`, `classify.ts` (applyProp), and `inspect.ts` — a
+   candidate for a future `jsxNodes.ts` refactor.
+3. **Quoted style keys round-trip with quotes.** Style keys written as
+   `"font-size"` (quoted) are returned and rewritten with the quotes intact.
+   Functional but displays with literal quote characters in the panel.

@@ -1,15 +1,5 @@
 // src/agent/bookmarklet.ts
 
-/** Minimal HTML-escape for text interpolated into the landing page. */
-// Single-quote is intentionally not escaped: all attributes in the template use double-quotes.
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 /**
  * Returns the `javascript:` bookmarklet that injects the served overlay bundle
  * as a <script> into the current page. `Date.now()` runs at click time so each
@@ -27,13 +17,12 @@ export function bookmarkletHref(port: number): string {
 }
 
 /**
- * Full landing-page HTML. Shows the active project root and port, and offers a
- * draggable bookmarklet anchor (browsers strip `javascript:` pasted into the
- * address bar, so drag-to-bookmarks-bar is required).
+ * Full landing-page HTML. Shows the agent port and offers a draggable
+ * bookmarklet anchor (browsers strip `javascript:` pasted into the address
+ * bar, so drag-to-bookmarks-bar is required).
  */
-export function landingHtml(projectRoot: string, port: number): string {
+export function landingHtml(port: number): string {
   const href = bookmarkletHref(port);
-  const root = escapeHtml(projectRoot);
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -50,7 +39,7 @@ export function landingHtml(projectRoot: string, port: number): string {
 </head>
 <body>
 <h1>antd UI Modifier</h1>
-<p class="meta">Project root: <code>${root}</code><br />Agent port: <code>${port}</code></p>
+<p class="meta">Agent port: <code>${port}</code></p>
 <p><strong>Drag this to your bookmarks bar:</strong></p>
 <p><a class="bm" href="${href}">UI Modifier</a></p>
 <ol>

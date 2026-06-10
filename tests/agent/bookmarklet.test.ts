@@ -22,16 +22,13 @@ describe("bookmarkletHref", () => {
 });
 
 describe("landingHtml", () => {
-  it("includes the project root, the port, and the bookmarklet href", () => {
-    const html = landingHtml("/some/root", 4567);
-    expect(html).toContain("/some/root");
+  it("includes the port and the bookmarklet href", () => {
+    const html = landingHtml(4567);
     expect(html).toContain("4567");
     expect(html).toContain(bookmarkletHref(4567));
   });
 
-  it("HTML-escapes the project root", () => {
-    const html = landingHtml("/a<b>&c/root", 4567);
-    expect(html).not.toContain("/a<b>&c/root");
-    expect(html).toContain("/a&lt;b&gt;&amp;c/root");
+  it("no longer renders a project root", () => {
+    expect(landingHtml(4567)).not.toContain("Project root");
   });
 });

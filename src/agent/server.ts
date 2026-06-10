@@ -35,7 +35,7 @@ const server = createServer(async (req, res) => {
 
   if (req.method === "GET" && (req.url === "/" || req.url === "")) {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-    return res.end(landingHtml(PROJECT_ROOT, PORT));
+    return res.end(landingHtml(PORT));
   }
 
   // Match on pathname so the bookmarklet's `?<cachebuster>` query is ignored.

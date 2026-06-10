@@ -55,6 +55,28 @@ describe("processEdits: styleRemove", () => {
     expect(res.newText).not.toContain("marginTop");
     expect(res.newText).toContain(`color: "red"`);
   });
+
+  it("drops the style attribute when removing the last property", () => {
+    const project = new Project({ useInMemoryFileSystem: true });
+    project.createSourceFile("F.tsx", `const C=()=>(<Button style={{ color: "red" }}>x</Button>);`);
+    const res = processEdits(project, {
+      file: "F.tsx", line: 1, column: 14,
+      edits: [{ kind: "styleRemove", property: "color" }],
+    });
+    expect(res.status).toBe("applied");
+    if (res.status !== "applied") return;
+    expect(res.newText).not.toContain("style=");
+  });
+
+  it("suggests (not errors) for styleRemove on a dynamic style expression", () => {
+    const project = new Project({ useInMemoryFileSystem: true });
+    project.createSourceFile("F.tsx", `const C=()=>(<Button style={styles}>x</Button>);`);
+    const res = processEdits(project, {
+      file: "F.tsx", line: 1, column: 14,
+      edits: [{ kind: "styleRemove", property: "color" }],
+    });
+    expect(res.status).toBe("suggested");
+  });
 });
 
 describe("processEdits: absolute file paths", () => {

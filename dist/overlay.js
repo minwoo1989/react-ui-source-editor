@@ -107,6 +107,7 @@
     const browser = $("browser");
     let loc = null;
     let snapshot = null;
+    let inspectGen = 0;
     function styleRow(property, value, editable) {
       const row = document.createElement("div");
       row.className = "row";
@@ -171,7 +172,15 @@
     }
     async function inspectInto(file) {
       if (!loc) return;
-      render(await handlers.onInspect({ file, line: loc.line, column: loc.column }));
+      const gen = ++inspectGen;
+      try {
+        const result = await handlers.onInspect({ file, line: loc.line, column: loc.column });
+        if (gen !== inspectGen) return;
+        render(result);
+      } catch (e) {
+        if (gen !== inspectGen) return;
+        out.textContent = `\u274C agent unreachable: ${e.message}`;
+      }
     }
     $("apply").onclick = async () => {
       if (!loc || !snapshot) {
@@ -184,11 +193,15 @@
         out.textContent = "Nothing to apply.";
         return;
       }
-      const res = await handlers.onApply({ file, line: loc.line, column: loc.column, edits });
-      out.textContent = res.status === "applied" ? "\u2705 Applied. HMR will reload." : res.status === "suggested" ? `\u{1F4CB} Suggested:
+      try {
+        const res = await handlers.onApply({ file, line: loc.line, column: loc.column, edits });
+        out.textContent = res.status === "applied" ? "\u2705 Applied. HMR will reload." : res.status === "suggested" ? `\u{1F4CB} Suggested:
 ${res.instruction}
 ${res.reason}` : `\u274C ${res.message}`;
-      if (res.status === "applied") await inspectInto(file);
+        if (res.status === "applied") await inspectInto(file);
+      } catch (e) {
+        out.textContent = `\u274C agent unreachable: ${e.message}`;
+      }
     };
     async function showDir(path) {
       let listing;
@@ -235,6 +248,7 @@ ${res.reason}` : `\u274C ${res.message}`;
       async setTarget(name, target) {
         browser.style.display = "none";
         if (!target) {
+          inspectGen++;
           $("who").textContent = `${name} \u2014 no source info`;
           loc = null;
           snapshot = null;

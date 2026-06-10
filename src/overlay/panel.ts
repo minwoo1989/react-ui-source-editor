@@ -60,6 +60,7 @@ export function createPanel(handlers: PanelHandlers) {
 
   let loc: { line: number; column: number } | null = null;
   let snapshot: InspectOk | null = null;
+  let inspectGen = 0;
 
   function styleRow(property: string, value: string, editable: boolean): HTMLDivElement {
     const row = document.createElement("div");
@@ -126,22 +127,35 @@ export function createPanel(handlers: PanelHandlers) {
 
   async function inspectInto(file: string) {
     if (!loc) return;
-    render(await handlers.onInspect({ file, line: loc.line, column: loc.column }));
+    const gen = ++inspectGen;
+    try {
+      const result = await handlers.onInspect({ file, line: loc.line, column: loc.column });
+      if (gen !== inspectGen) return;
+      render(result);
+    } catch (e) {
+      if (gen !== inspectGen) return;
+      out.textContent = `❌ agent unreachable: ${(e as Error).message}`;
+    }
   }
 
   $("apply").onclick = async () => {
     if (!loc || !snapshot) { out.textContent = "No editable selection."; return; }
+    // Apply intentionally pairs the live File value with the last-inspected loc; a stale pair lands on the server's clear error path (file not found / no JSX at position).
     const file = $<HTMLInputElement>("file").value.trim();
     const edits = buildEdits(snapshot, collectState());
     if (edits.length === 0) { out.textContent = "Nothing to apply."; return; }
-    const res = await handlers.onApply({ file, line: loc.line, column: loc.column, edits });
-    out.textContent =
-      res.status === "applied" ? "✅ Applied. HMR will reload."
-      : res.status === "suggested" ? `\u{1F4CB} Suggested:\n${res.instruction}\n${res.reason}`
-      : `❌ ${res.message}`;
-    // Element start position is stable under our own edits (they only touch
-    // text at/after the opening tag), so refresh rows from the new source.
-    if (res.status === "applied") await inspectInto(file);
+    try {
+      const res = await handlers.onApply({ file, line: loc.line, column: loc.column, edits });
+      out.textContent =
+        res.status === "applied" ? "✅ Applied. HMR will reload."
+        : res.status === "suggested" ? `\u{1F4CB} Suggested:\n${res.instruction}\n${res.reason}`
+        : `❌ ${res.message}`;
+      // Element start position is stable under our own edits (they only touch
+      // text at/after the opening tag), so refresh rows from the new source.
+      if (res.status === "applied") await inspectInto(file);
+    } catch (e) {
+      out.textContent = `❌ agent unreachable: ${(e as Error).message}`;
+    }
   };
 
   async function showDir(path?: string) {
@@ -186,6 +200,7 @@ export function createPanel(handlers: PanelHandlers) {
     async setTarget(name: string, target: PanelTarget | null) {
       browser.style.display = "none";
       if (!target) {
+        inspectGen++;
         $("who").textContent = `${name} — no source info`;
         loc = null;
         snapshot = null;

@@ -15,5 +15,6 @@ describe("isEditableSourcePath", () => {
     expect(isEditableSourcePath("D:/app/.env")).toBe(false);
     expect(isEditableSourcePath("D:/app/package.json")).toBe(false);
     expect(isEditableSourcePath("")).toBe(false);
+    expect(isEditableSourcePath("D:/app/foo.tsx.bak")).toBe(false);
   });
 });

@@ -112,7 +112,7 @@ const server = createServer(async (req, res) => {
 
     if (result.status === "applied") {
       mkdirSync(BACKUP_DIR, { recursive: true });
-      copyFileSync(reqBody.file, join(BACKUP_DIR, `${basename(reqBody.file)}.${Date.now()}.bak`));
+      copyFileSync(reqBody.file, join(BACKUP_DIR, `${basename(reqBody.file)}.${Date.now()}-${process.hrtime.bigint()}.bak`));
       writeFileSync(reqBody.file, result.newText, "utf8");
     }
     sendJson(res, 200, result);

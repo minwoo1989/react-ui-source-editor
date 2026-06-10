@@ -17,4 +17,8 @@ describe("isEditableSourcePath", () => {
     expect(isEditableSourcePath("")).toBe(false);
     expect(isEditableSourcePath("D:/app/foo.tsx.bak")).toBe(false);
   });
+
+  it("returns false for non-string input (unvalidated JSON body)", () => {
+    expect(isEditableSourcePath(undefined as unknown as string)).toBe(false);
+  });
 });

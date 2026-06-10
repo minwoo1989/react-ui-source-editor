@@ -70,4 +70,10 @@ describe("removeStyle", () => {
     const { el } = elementAt(`const C=()=>(<Button style={styles}>x</Button>);`, 1, 14);
     expect(() => removeStyle(el, "color")).toThrow("style is not an object literal");
   });
+
+  it("leaves shorthand properties untouched (no-op)", () => {
+    const { sf, el } = elementAt(`const C=()=>{const color="red";return(<Button style={{ color, marginTop: 8 }}>x</Button>);};`, 1, 39);
+    removeStyle(el, "color");
+    expect(sf.getFullText()).toContain("color,");
+  });
 });

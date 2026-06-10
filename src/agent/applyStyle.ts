@@ -34,7 +34,12 @@ export function applyStyle(el: Node, property: string, value: string | number): 
   }
 }
 
-/** Remove a property from the style object literal; drop the attribute when it empties. */
+/**
+ * Remove a property from the style object literal; drop the attribute when it empties.
+ * Only removes unquoted PropertyAssignment entries (e.g. `color: "red"`) — shorthand
+ * properties (`{ color }`) and spread elements are left untouched, mirroring how
+ * `applyStyle` guards with `Node.isPropertyAssignment`.
+ */
 export function removeStyle(el: Node, property: string): void {
   const opening = getOpening(el);
   const styleAttr = opening
@@ -49,7 +54,7 @@ export function removeStyle(el: Node, property: string): void {
   }
 
   const existing = obj.getProperty(property);
-  if (!existing) return;
+  if (!existing || !Node.isPropertyAssignment(existing)) return;
   existing.remove();
   if (obj.getProperties().length === 0) styleAttr.remove();
 }

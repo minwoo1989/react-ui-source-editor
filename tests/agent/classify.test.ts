@@ -55,3 +55,20 @@ describe("classifyEdit", () => {
     expect(classifyEdit(el, edit).safe).toBe(false);
   });
 });
+
+describe("classifyEdit: styleRemove", () => {
+  it("is safe when style is an object literal", () => {
+    const el = elementAt(`const C=()=>(<Button style={{ color: "red" }}>x</Button>);`, 1, 14);
+    expect(classifyEdit(el, { kind: "styleRemove", property: "color" }).safe).toBe(true);
+  });
+
+  it("is safe (no-op) when there is no style attribute", () => {
+    const el = elementAt(`const C=()=>(<Button>x</Button>);`, 1, 14);
+    expect(classifyEdit(el, { kind: "styleRemove", property: "color" }).safe).toBe(true);
+  });
+
+  it("is unsafe when style is a dynamic expression", () => {
+    const el = elementAt(`const C=()=>(<Button style={styles}>x</Button>);`, 1, 14);
+    expect(classifyEdit(el, { kind: "styleRemove", property: "color" }).safe).toBe(false);
+  });
+});

@@ -36,3 +36,18 @@ describe("applyProp", () => {
     expect(sf.getFullText()).toContain(`disabled={true}`);
   });
 });
+
+describe("applyProp: className", () => {
+  it("adds className when the attribute is missing", () => {
+    const { sf, el } = elementAt(`const C=()=>(<Button>x</Button>);`, 1, 14);
+    applyProp(el, "className", "my-btn");
+    expect(sf.getFullText()).toContain(`className="my-btn"`);
+  });
+
+  it("replaces an existing string-literal className", () => {
+    const { sf, el } = elementAt(`const C=()=>(<Button className="old">x</Button>);`, 1, 14);
+    applyProp(el, "className", "new-cls");
+    expect(sf.getFullText()).toContain(`className="new-cls"`);
+    expect(sf.getFullText()).not.toContain(`"old"`);
+  });
+});

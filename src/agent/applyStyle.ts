@@ -33,3 +33,23 @@ export function applyStyle(el: Node, property: string, value: string | number): 
     obj.addPropertyAssignment({ name: property, initializer: literal(value) });
   }
 }
+
+/** Remove a property from the style object literal; drop the attribute when it empties. */
+export function removeStyle(el: Node, property: string): void {
+  const opening = getOpening(el);
+  const styleAttr = opening
+    .getAttributes()
+    .find((a: Node) => Node.isJsxAttribute(a) && a.getNameNode().getText() === "style");
+  if (!styleAttr) return;
+
+  const init = styleAttr.getInitializer();
+  const obj = Node.isJsxExpression(init) ? init.getExpression() : undefined;
+  if (!obj || !Node.isObjectLiteralExpression(obj)) {
+    throw new Error("style is not an object literal");
+  }
+
+  const existing = obj.getProperty(property);
+  if (!existing) return;
+  existing.remove();
+  if (obj.getProperties().length === 0) styleAttr.remove();
+}

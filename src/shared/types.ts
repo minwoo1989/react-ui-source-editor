@@ -49,6 +49,8 @@ export interface InspectField {
 
 export interface InspectOk {
   status: "ok";
+  /** 1-based source line of the resolved opening element (after line-offset correction). */
+  line: number;
   /** false when a style attribute exists but is not an object literal (e.g. style={styles}). */
   styleEditable: boolean;
   style: InspectStyleEntry[];

@@ -117,6 +117,8 @@
     let loc = null;
     let snapshot = null;
     let inspectGen = 0;
+    let whoName = "";
+    let whoShort = "";
     function styleRow(property, value, editable) {
       const row = document.createElement("div");
       row.className = "row";
@@ -145,6 +147,7 @@
         return;
       }
       snapshot = res;
+      $("who").textContent = `${whoName} \u2014 ${whoShort}:${res.line}`;
       out.textContent = "";
       for (const e of res.style) {
         stylesBox.appendChild(styleRow(e.property, e.value, e.editable && res.styleEditable));
@@ -264,8 +267,9 @@ ${res.reason}` : `\u274C ${res.message}`;
           clearEditors();
           return;
         }
-        const short = target.file.split(/[\\/]/).pop();
-        $("who").textContent = `${name} \u2014 ${short}:${target.line}`;
+        whoName = name;
+        whoShort = target.file.split(/[\\/]/).pop() ?? "";
+        $("who").textContent = `${whoName} \u2014 ${whoShort}:${target.line}`;
         loc = { line: target.line, column: target.column, tag: target.tag };
         $("file").value = target.file;
         await inspectInto(target.file);

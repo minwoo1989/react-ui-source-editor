@@ -71,6 +71,7 @@ export function inspectJsxElement(sf: SourceFile, line: number, column: number, 
   const { entries, editable } = styleEntries(op);
   return {
     status: "ok",
+    line: opening.getStartLineNumber(),
     styleEditable: editable,
     style: entries,
     className: classNameField(op),

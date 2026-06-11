@@ -113,6 +113,7 @@ describe("inspectJsxElement", () => {
     expect(res.status).toBe("ok");
     if (res.status === "ok") {
       expect(res.style.find((s) => s.property === "color")?.value).toBe("red");
+      expect(res.line).toBe(3); // resolved to the true line, not the reported 13
     }
   });
 

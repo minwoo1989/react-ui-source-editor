@@ -4,6 +4,7 @@ import type { InspectOk } from "../../src/shared/types.js";
 
 const snapshot: InspectOk = {
   status: "ok",
+  line: 1,
   styleEditable: true,
   style: [
     { property: "color", value: "red", editable: true },

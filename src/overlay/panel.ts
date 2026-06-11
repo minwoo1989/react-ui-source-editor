@@ -61,6 +61,8 @@ export function createPanel(handlers: PanelHandlers) {
   let loc: { line: number; column: number; tag?: string } | null = null;
   let snapshot: InspectOk | null = null;
   let inspectGen = 0;
+  let whoName = "";
+  let whoShort = "";
 
   function styleRow(property: string, value: string, editable: boolean): HTMLDivElement {
     const row = document.createElement("div");
@@ -89,6 +91,7 @@ export function createPanel(handlers: PanelHandlers) {
       return;
     }
     snapshot = res;
+    $("who").textContent = `${whoName} — ${whoShort}:${res.line}`;
     out.textContent = "";
     for (const e of res.style) {
       stylesBox.appendChild(styleRow(e.property, e.value, e.editable && res.styleEditable));
@@ -207,8 +210,9 @@ export function createPanel(handlers: PanelHandlers) {
         clearEditors();
         return;
       }
-      const short = target.file.split(/[\\/]/).pop();
-      $("who").textContent = `${name} — ${short}:${target.line}`;
+      whoName = name;
+      whoShort = target.file.split(/[\\/]/).pop() ?? "";
+      $("who").textContent = `${whoName} — ${whoShort}:${target.line}`;
       loc = { line: target.line, column: target.column, tag: target.tag };
       $<HTMLInputElement>("file").value = target.file;
       await inspectInto(target.file);

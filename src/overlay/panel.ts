@@ -4,7 +4,7 @@ import type {
 } from "../shared/types.js";
 import { buildEdits, type PanelState, type StyleRowState } from "./editsDiff.js";
 
-export interface PanelTarget { file: string; line: number; column: number; }
+export interface PanelTarget { file: string; line: number; column: number; tag?: string; }
 
 export interface PanelHandlers {
   onInspect(req: InspectRequest): Promise<InspectResult>;
@@ -58,7 +58,7 @@ export function createPanel(handlers: PanelHandlers) {
   const stylesBox = $("styles");
   const browser = $("browser");
 
-  let loc: { line: number; column: number } | null = null;
+  let loc: { line: number; column: number; tag?: string } | null = null;
   let snapshot: InspectOk | null = null;
   let inspectGen = 0;
 
@@ -129,7 +129,7 @@ export function createPanel(handlers: PanelHandlers) {
     if (!loc) return;
     const gen = ++inspectGen;
     try {
-      const result = await handlers.onInspect({ file, line: loc.line, column: loc.column });
+      const result = await handlers.onInspect({ file, line: loc.line, column: loc.column, tag: loc.tag });
       if (gen !== inspectGen) return;
       render(result);
     } catch (e) {
@@ -145,7 +145,7 @@ export function createPanel(handlers: PanelHandlers) {
     const edits = buildEdits(snapshot, collectState());
     if (edits.length === 0) { out.textContent = "Nothing to apply."; return; }
     try {
-      const res = await handlers.onApply({ file, line: loc.line, column: loc.column, edits });
+      const res = await handlers.onApply({ file, line: loc.line, column: loc.column, tag: loc.tag, edits });
       out.textContent =
         res.status === "applied" ? "✅ Applied. HMR will reload."
         : res.status === "suggested" ? `\u{1F4CB} Suggested:\n${res.instruction}\n${res.reason}`
@@ -209,7 +209,7 @@ export function createPanel(handlers: PanelHandlers) {
       }
       const short = target.file.split(/[\\/]/).pop();
       $("who").textContent = `${name} — ${short}:${target.line}`;
-      loc = { line: target.line, column: target.column };
+      loc = { line: target.line, column: target.column, tag: target.tag };
       $<HTMLInputElement>("file").value = target.file;
       await inspectInto(target.file);
     },

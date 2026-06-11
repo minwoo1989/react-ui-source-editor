@@ -1,6 +1,15 @@
 "use strict";
 (() => {
   // src/overlay/fiber.ts
+  function fiberTypeName(fiber) {
+    const t = fiber.type;
+    if (typeof t === "string") return t;
+    if (typeof t === "function") return t.displayName || t.name || void 0;
+    if (t && typeof t === "object") {
+      return t.displayName || t.render && (t.render.displayName || t.render.name) || void 0;
+    }
+    return void 0;
+  }
   function sourceLocFor(node) {
     const key = Object.keys(node).find((k) => k.startsWith("__reactFiber$"));
     if (!key) return void 0;
@@ -8,7 +17,7 @@
     while (fiber) {
       const src = fiber._debugSource;
       if (src && src.fileName) {
-        return { file: src.fileName, line: src.lineNumber, column: src.columnNumber };
+        return { file: src.fileName, line: src.lineNumber, column: src.columnNumber, tag: fiberTypeName(fiber) };
       }
       fiber = fiber.return;
     }
@@ -174,7 +183,7 @@
       if (!loc) return;
       const gen = ++inspectGen;
       try {
-        const result = await handlers.onInspect({ file, line: loc.line, column: loc.column });
+        const result = await handlers.onInspect({ file, line: loc.line, column: loc.column, tag: loc.tag });
         if (gen !== inspectGen) return;
         render(result);
       } catch (e) {
@@ -194,7 +203,7 @@
         return;
       }
       try {
-        const res = await handlers.onApply({ file, line: loc.line, column: loc.column, edits });
+        const res = await handlers.onApply({ file, line: loc.line, column: loc.column, tag: loc.tag, edits });
         out.textContent = res.status === "applied" ? "\u2705 Applied. HMR will reload." : res.status === "suggested" ? `\u{1F4CB} Suggested:
 ${res.instruction}
 ${res.reason}` : `\u274C ${res.message}`;
@@ -257,7 +266,7 @@ ${res.reason}` : `\u274C ${res.message}`;
         }
         const short = target.file.split(/[\\/]/).pop();
         $("who").textContent = `${name} \u2014 ${short}:${target.line}`;
-        loc = { line: target.line, column: target.column };
+        loc = { line: target.line, column: target.column, tag: target.tag };
         $("file").value = target.file;
         await inspectInto(target.file);
       }

@@ -7,6 +7,7 @@ import { Project } from "ts-morph";
 import { processEdits } from "./apply.js";
 import { inspectJsxElement } from "./inspect.js";
 import { createHistory } from "./history.js";
+import { detectEol, normalizeEol } from "./eol.js";
 import { isEditableSourcePath } from "./paths.js";
 import type { EditRequest, InspectRequest } from "../shared/types.js";
 import { landingHtml } from "./bookmarklet.js";
@@ -118,10 +119,11 @@ const server = createServer(async (req, res) => {
     const result = processEdits(project, { ...reqBody, file: mem });
 
     if (result.status === "applied") {
+      const normalized = normalizeEol(result.newText, detectEol(original));
       mkdirSync(BACKUP_DIR, { recursive: true });
       copyFileSync(reqBody.file, join(BACKUP_DIR, `${basename(reqBody.file)}.${Date.now()}-${process.hrtime.bigint()}.bak`));
-      writeFileSync(reqBody.file, result.newText, "utf8");
-      history.record(reqBody.file, original, result.newText);
+      writeFileSync(reqBody.file, normalized, "utf8");
+      history.record(reqBody.file, original, normalized);
     }
     sendJson(res, 200, result);
   } catch (err) {

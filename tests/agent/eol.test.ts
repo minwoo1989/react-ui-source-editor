@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { detectEol, normalizeEol } from "../../src/agent/eol.js";
+import { Project } from "ts-morph";
+import { processEdits } from "../../src/agent/apply.js";
+import type { EditRequest } from "../../src/shared/types.js";
 
 describe("detectEol", () => {
   it("detects CRLF", () => {
@@ -32,5 +35,35 @@ describe("normalizeEol", () => {
   });
   it("leaves single-line text unchanged", () => {
     expect(normalizeEol("one line", "\r\n")).toBe("one line");
+  });
+});
+
+describe("processEdits output normalized to the source EOL", () => {
+  it("yields no lone \\n after normalizing a CRLF source edit", () => {
+    const original = [
+      "const C = () => (",
+      "  <button",
+      "    style={{",
+      '      color: "red",',
+      "    }}",
+      "  >hi</button>",
+      ");",
+    ].join("\r\n");
+
+    const project = new Project({ useInMemoryFileSystem: true });
+    project.createSourceFile("/F.tsx", original);
+    const req: EditRequest = {
+      file: "/F.tsx", line: 2, column: 3,
+      edits: [{ kind: "style", property: "padding", value: 8 }],
+    };
+
+    const result = processEdits(project, req);
+    expect(result.status).toBe("applied");
+    if (result.status !== "applied") return;
+
+    const normalized = normalizeEol(result.newText, detectEol(original));
+    expect(normalized).toContain("padding");
+    // every \n must be preceded by \r — i.e. no lone LF remains
+    expect(/(?<!\r)\n/.test(normalized)).toBe(false);
   });
 });

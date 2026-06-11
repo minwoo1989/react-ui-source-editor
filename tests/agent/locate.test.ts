@@ -77,4 +77,11 @@ describe("resolveJsxElement", () => {
     // line 9 is the last line; a shifted report could exceed it
     expect(() => resolveJsxElement(sf, 999, 5, "div")).not.toThrow();
   });
+
+  it("tolerant phase, no tag: column-only match picks nearest from below", () => {
+    const sf = sourceFileFrom(NESTED);
+    const node = resolveJsxElement(sf, 15, 7); // col 7 matches <span>(5) and <br/>(6); no tag
+    expect(node).toBeDefined();
+    expect(sf.compilerNode.getLineAndCharacterOfPosition(node!.getStart()).line + 1).toBe(6);
+  });
 });

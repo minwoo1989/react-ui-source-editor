@@ -1,13 +1,13 @@
 // src/agent/locate.ts
-import { SourceFile, Node, ts, SyntaxKind } from "ts-morph";
+import { SourceFile, Node, ts, SyntaxKind, JsxOpeningElement, JsxSelfClosingElement } from "ts-morph";
 
-function isJsxOpening(node: Node): boolean {
+function isJsxOpening(node: Node): node is JsxOpeningElement | JsxSelfClosingElement {
   const k = node.getKind();
   return k === SyntaxKind.JsxOpeningElement || k === SyntaxKind.JsxSelfClosingElement;
 }
 
-function tagText(node: Node): string {
-  return (node as unknown as { getTagNameNode(): Node }).getTagNameNode().getText();
+function tagText(node: JsxOpeningElement | JsxSelfClosingElement): string {
+  return node.getTagNameNode().getText();
 }
 
 function lineColOf(sf: SourceFile, node: Node): { line: number; column: number } {
@@ -16,7 +16,7 @@ function lineColOf(sf: SourceFile, node: Node): { line: number; column: number }
 }
 
 /** Exact position lookup — the original behavior, used when _debugSource is accurate. */
-function exactAt(sf: SourceFile, line: number, column: number): Node | undefined {
+function exactAt(sf: SourceFile, line: number, column: number): JsxOpeningElement | JsxSelfClosingElement | undefined {
   let pos: number;
   try {
     pos = ts.getPositionOfLineAndCharacter(sf.compilerNode, line - 1, column - 1);
@@ -44,7 +44,7 @@ export function resolveJsxElement(
   line: number,
   column: number,
   tag?: string
-): Node | undefined {
+): JsxOpeningElement | JsxSelfClosingElement | undefined {
   // 1. Exact phase — accurate _debugSource (no offset).
   const exact = exactAt(sf, line, column);
   if (exact && (tag === undefined || tagText(exact) === tag)) return exact;

@@ -1,13 +1,13 @@
 // tests/agent/classify.test.ts
 import { describe, it, expect } from "vitest";
 import { Project, SyntaxKind } from "ts-morph";
-import { locateJsxElement } from "../../src/agent/locate.js";
+import { resolveJsxElement } from "../../src/agent/locate.js";
 import { classifyEdit } from "../../src/agent/classify.js";
 import type { Edit } from "../../src/shared/types.js";
 
 function elementAt(text: string, line: number, col: number) {
   const sf = new Project({ useInMemoryFileSystem: true }).createSourceFile("F.tsx", text);
-  const opening = locateJsxElement(sf, line, col)!;
+  const opening = resolveJsxElement(sf, line, col)!;
   return opening.getParentIfKind(SyntaxKind.JsxElement) ??
          opening.getParentIfKind(SyntaxKind.JsxSelfClosingElement) ?? opening;
 }
@@ -53,5 +53,22 @@ describe("classifyEdit", () => {
     const el = elementAt(`const C=()=>(<>{items.map(i=><Button key={i}>x</Button>)}</>);`, 1, 30);
     const edit: Edit = { kind: "text", value: "y" };
     expect(classifyEdit(el, edit).safe).toBe(false);
+  });
+});
+
+describe("classifyEdit: styleRemove", () => {
+  it("is safe when style is an object literal", () => {
+    const el = elementAt(`const C=()=>(<Button style={{ color: "red" }}>x</Button>);`, 1, 14);
+    expect(classifyEdit(el, { kind: "styleRemove", property: "color" }).safe).toBe(true);
+  });
+
+  it("is safe (no-op) when there is no style attribute", () => {
+    const el = elementAt(`const C=()=>(<Button>x</Button>);`, 1, 14);
+    expect(classifyEdit(el, { kind: "styleRemove", property: "color" }).safe).toBe(true);
+  });
+
+  it("is unsafe when style is a dynamic expression", () => {
+    const el = elementAt(`const C=()=>(<Button style={styles}>x</Button>);`, 1, 14);
+    expect(classifyEdit(el, { kind: "styleRemove", property: "color" }).safe).toBe(false);
   });
 });

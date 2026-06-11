@@ -55,6 +55,17 @@ export function classifyEdit(el: Node, edit: Edit): Classification {
     return { safe: false, reason: "prop value is a dynamic expression" };
   }
 
+  if (edit.kind === "styleRemove") {
+    const attr = getAttribute(el, "style");
+    if (!attr) return { safe: true, reason: "no style attr; remove is a no-op" };
+    const init = (attr as any).getInitializer();
+    const expr = Node.isJsxExpression(init) ? init.getExpression() : undefined;
+    if (expr && Node.isObjectLiteralExpression(expr)) {
+      return { safe: true, reason: "style is an object literal; can remove key" };
+    }
+    return { safe: false, reason: "style is a dynamic expression" };
+  }
+
   if (edit.kind === "style") {
     const attr = getAttribute(el, "style");
     if (!attr) return { safe: true, reason: "no style attr; can add one" };

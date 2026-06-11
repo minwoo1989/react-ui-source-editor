@@ -1,5 +1,22 @@
 // src/overlay/fiber.ts
-export interface SourceLoc { file: string; line: number; column: number; }
+export interface SourceLoc { file: string; line: number; column: number; tag?: string; }
+
+function fiberTypeName(fiber: any): string | undefined {
+  const t = fiber.type;
+  if (typeof t === "string") return t;                       // host element: "div"
+  if (typeof t === "function") return t.displayName || t.name || undefined; // composite
+  if (t && typeof t === "object") {
+    // memo/forwardRef: prefer an explicit displayName, then the inner render (forwardRef)
+    // or wrapped type (memo) function name.
+    return (
+      t.displayName ||
+      (t.render && (t.render.displayName || t.render.name)) ||
+      (t.type && typeof t.type === "function" && (t.type.displayName || t.type.name)) ||
+      undefined
+    );
+  }
+  return undefined;
+}
 
 /** Walk up the React fiber from a DOM node to find _debugSource. */
 export function sourceLocFor(node: Element): SourceLoc | undefined {
@@ -9,7 +26,7 @@ export function sourceLocFor(node: Element): SourceLoc | undefined {
   while (fiber) {
     const src = fiber._debugSource;
     if (src && src.fileName) {
-      return { file: src.fileName, line: src.lineNumber, column: src.columnNumber };
+      return { file: src.fileName, line: src.lineNumber, column: src.columnNumber, tag: fiberTypeName(fiber) };
     }
     fiber = fiber.return;
   }

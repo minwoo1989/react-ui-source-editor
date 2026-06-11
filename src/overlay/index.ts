@@ -2,23 +2,18 @@
 import { sourceLocFor, componentNameFor } from "./fiber.js";
 import { createPanel } from "./panel.js";
 import { createInspector } from "./inspector.js";
-import { sendEdit, relativeToSrc } from "./api.js";
-import type { Edit } from "../shared/types.js";
-
-let current: { file: string; line: number; column: number } | null = null;
+import { sendEdit, sendInspect, fetchFsListing } from "./api.js";
 
 const panel = createPanel({
-  onApply: async (edits: Edit[]) => {
-    if (!current) return { status: "error", message: "no selection" };
-    return sendEdit({ ...current, edits });
-  },
+  onInspect: sendInspect,
+  onApply: sendEdit,
+  onListDir: fetchFsListing,
 });
 
 createInspector((el) => {
+  // _debugSource gives the absolute path; it is passed through verbatim.
   const loc = sourceLocFor(el);
-  if (!loc) { panel.setTarget(componentNameFor(el), "no source info"); current = null; return; }
-  current = { file: relativeToSrc(loc.file), line: loc.line, column: loc.column };
-  panel.setTarget(componentNameFor(el), `${current.file}:${current.line}`);
+  void panel.setTarget(componentNameFor(el), loc ?? null);
 }, panel.host);
 
 console.log("[ui-modifier] overlay ready");

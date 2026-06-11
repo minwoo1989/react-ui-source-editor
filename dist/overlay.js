@@ -224,6 +224,16 @@ ${res.reason}` : `\u274C ${res.message}`;
         file = target.file;
         loc = { line: target.line, column: target.column, tag: target.tag };
         await inspectInto();
+      },
+      /** Render a persistent, selection-independent error (e.g. agent origin not found). */
+      setError(message) {
+        inspectGen++;
+        file = null;
+        loc = null;
+        snapshot = null;
+        clearEditors();
+        $("who").textContent = "\u26A0 agent \uC5F0\uACB0 \uBD88\uAC00";
+        out.textContent = `\u274C ${message}`;
       }
     };
   }
@@ -262,10 +272,24 @@ ${res.reason}` : `\u274C ${res.message}`;
     document.addEventListener("click", onClick, true);
   }
 
+  // src/overlay/agentOrigin.ts
+  function originFromSrc(src) {
+    if (!src) return null;
+    try {
+      return new URL(src).origin;
+    } catch {
+      return null;
+    }
+  }
+  var AGENT_ORIGIN = typeof document !== "undefined" ? originFromSrc(document.currentScript?.src) : null;
+
   // src/overlay/api.ts
-  var AGENT_ORIGIN = "http://localhost:4567";
+  function origin() {
+    if (AGENT_ORIGIN === null) throw new Error("agent origin not detected");
+    return AGENT_ORIGIN;
+  }
   async function sendEdit(req) {
-    const res = await fetch(`${AGENT_ORIGIN}/edit`, {
+    const res = await fetch(`${origin()}/edit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(req)
@@ -273,7 +297,7 @@ ${res.reason}` : `\u274C ${res.message}`;
     return await res.json();
   }
   async function sendInspect(req) {
-    const res = await fetch(`${AGENT_ORIGIN}/inspect`, {
+    const res = await fetch(`${origin()}/inspect`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(req)
@@ -286,9 +310,14 @@ ${res.reason}` : `\u274C ${res.message}`;
     onInspect: sendInspect,
     onApply: sendEdit
   });
-  createInspector((el) => {
-    const loc = sourceLocFor(el);
-    void panel.setTarget(componentNameFor(el), loc ?? null);
-  }, panel.host);
+  if (AGENT_ORIGIN === null) {
+    panel.setError("\uC5D0\uC774\uC804\uD2B8 origin\uC744 \uAC10\uC9C0\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4 \u2014 \uBD81\uB9C8\uD074\uB9BF\uC73C\uB85C \uB2E4\uC2DC \uC5EC\uC138\uC694.");
+    console.error("[ui-modifier] agent origin not detected from document.currentScript");
+  } else {
+    createInspector((el) => {
+      const loc = sourceLocFor(el);
+      void panel.setTarget(componentNameFor(el), loc ?? null);
+    }, panel.host);
+  }
   console.log("[ui-modifier] overlay ready");
 })();

@@ -171,5 +171,15 @@ export function createPanel(handlers: PanelHandlers) {
       loc = { line: target.line, column: target.column, tag: target.tag };
       await inspectInto();
     },
+    /** Render a persistent, selection-independent error (e.g. agent origin not found). */
+    setError(message: string) {
+      inspectGen++;
+      file = null;
+      loc = null;
+      snapshot = null;
+      clearEditors();
+      $("who").textContent = "⚠ agent 연결 불가";
+      out.textContent = `❌ ${message}`;
+    },
   };
 }

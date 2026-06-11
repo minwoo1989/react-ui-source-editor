@@ -40,6 +40,17 @@ describe("processEdits", () => {
     };
     expect(processEdits(project, req).status).toBe("error");
   });
+
+  it("error message names the tag and line when no element is found", () => {
+    const project = projectWith(`const x = 1;`);
+    const req: EditRequest = {
+      file: "/F.tsx", line: 1, column: 1, tag: "button",
+      edits: [{ kind: "prop", name: "type", value: "primary" }],
+    };
+    const res = processEdits(project, req);
+    expect(res.status).toBe("error");
+    if (res.status === "error") expect(res.message).toMatch(/no button element near line 1/);
+  });
 });
 
 describe("processEdits: styleRemove", () => {

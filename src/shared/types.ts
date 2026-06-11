@@ -13,6 +13,8 @@ export interface EditRequest {
   file: string;
   line: number;
   column: number;
+  /** JSX tag/component name of the clicked element, used to disambiguate after line-offset correction. */
+  tag?: string;
   edits: Edit[];
 }
 
@@ -28,6 +30,8 @@ export interface InspectRequest {
   file: string;
   line: number;
   column: number;
+  /** JSX tag/component name of the clicked element, used to disambiguate after line-offset correction. */
+  tag?: string;
 }
 
 /** One entry of the style object literal. Non-literal values carry raw source text and editable: false. */

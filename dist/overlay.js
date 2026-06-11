@@ -6,7 +6,7 @@
     if (typeof t === "string") return t;
     if (typeof t === "function") return t.displayName || t.name || void 0;
     if (t && typeof t === "object") {
-      return t.displayName || t.render && (t.render.displayName || t.render.name) || void 0;
+      return t.displayName || t.render && (t.render.displayName || t.render.name) || t.type && typeof t.type === "function" && (t.type.displayName || t.type.name) || void 0;
     }
     return void 0;
   }

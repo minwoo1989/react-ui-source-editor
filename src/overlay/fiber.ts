@@ -6,7 +6,14 @@ function fiberTypeName(fiber: any): string | undefined {
   if (typeof t === "string") return t;                       // host element: "div"
   if (typeof t === "function") return t.displayName || t.name || undefined; // composite
   if (t && typeof t === "object") {
-    return t.displayName || (t.render && (t.render.displayName || t.render.name)) || undefined; // memo/forwardRef
+    // memo/forwardRef: prefer an explicit displayName, then the inner render (forwardRef)
+    // or wrapped type (memo) function name.
+    return (
+      t.displayName ||
+      (t.render && (t.render.displayName || t.render.name)) ||
+      (t.type && typeof t.type === "function" && (t.type.displayName || t.type.name)) ||
+      undefined
+    );
   }
   return undefined;
 }

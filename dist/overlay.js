@@ -222,14 +222,18 @@ ${res.reason}` : `\u274C ${res.message}`;
         const r = kind === "undo" ? await handlers.onUndo() : await handlers.onRedo();
         if (r.status === "error") {
           out.textContent = `\u274C ${r.message}`;
+          void handlers.onHistory().then((s) => setHistoryButtons(s.canUndo, s.canRedo)).catch(() => {
+          });
           return;
         }
         setHistoryButtons(r.canUndo, r.canRedo);
-        if (r.status === "ok") {
-          const short = r.file.split(/[\\/]/).pop();
-          out.textContent = kind === "undo" ? `\u21B6 ${short} \uB418\uB3CC\uB9BC` : `\u21B7 ${short} \uB2E4\uC2DC \uC801\uC6A9`;
-          if (r.file === file) await inspectInto();
+        if (r.status === "noop") {
+          out.textContent = kind === "undo" ? "\u21B6 \uB354 \uB418\uB3CC\uB9B4 \uB0B4\uC6A9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4." : "\u21B7 \uB2E4\uC2DC \uC801\uC6A9\uD560 \uB0B4\uC6A9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.";
+          return;
         }
+        const short = r.file.split(/[\\/]/).pop();
+        out.textContent = kind === "undo" ? `\u21B6 ${short} \uB418\uB3CC\uB9BC` : `\u21B7 ${short} \uB2E4\uC2DC \uC801\uC6A9`;
+        if (r.file === file) await inspectInto();
       } catch (e) {
         out.textContent = `\u274C agent unreachable: ${e.message}`;
       }

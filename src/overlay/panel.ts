@@ -170,14 +170,21 @@ export function createPanel(handlers: PanelHandlers) {
   async function runHistory(kind: "undo" | "redo") {
     try {
       const r = kind === "undo" ? await handlers.onUndo() : await handlers.onRedo();
-      if (r.status === "error") { out.textContent = `❌ ${r.message}`; return; }
-      setHistoryButtons(r.canUndo, r.canRedo);
-      if (r.status === "ok") {
-        const short = r.file.split(/[\\/]/).pop();
-        out.textContent = kind === "undo" ? `↶ ${short} 되돌림` : `↷ ${short} 다시 적용`;
-        // Refresh rows only if the affected file is the one currently shown.
-        if (r.file === file) await inspectInto();
+      if (r.status === "error") {
+        out.textContent = `❌ ${r.message}`;
+        // Error carries no stack state — re-sync buttons from the agent's truth.
+        void handlers.onHistory().then((s) => setHistoryButtons(s.canUndo, s.canRedo)).catch(() => {});
+        return;
       }
+      setHistoryButtons(r.canUndo, r.canRedo);
+      if (r.status === "noop") {
+        out.textContent = kind === "undo" ? "↶ 더 되돌릴 내용이 없습니다." : "↷ 다시 적용할 내용이 없습니다.";
+        return;
+      }
+      const short = r.file.split(/[\\/]/).pop();
+      out.textContent = kind === "undo" ? `↶ ${short} 되돌림` : `↷ ${short} 다시 적용`;
+      // Refresh rows only if the affected file is the one currently shown.
+      if (r.file === file) await inspectInto();
     } catch (e) {
       out.textContent = `❌ agent unreachable: ${(e as Error).message}`;
     }

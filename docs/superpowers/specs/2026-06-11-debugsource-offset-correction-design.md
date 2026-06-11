@@ -164,3 +164,30 @@ and that the edit → Apply → HMR loop works end to end.
 - Fixing the upstream `@vitejs/plugin-react` transform.
 - Production / non-dev support for click-to-edit.
 - Any change to the bookmarklet-delivery or style/class-editing features.
+
+## Verification (2026-06-11)
+
+**Automated gate:** `npx vitest run` — 85/85 across 11 files (incl. the new
+`resolveJsxElement` suite and shifted-line inspect tests). `npx tsc --noEmit` —
+clean. `npm run build:overlay` rebuilt `dist/overlay.js` (12.4 kb, committed).
+
+**Browser regression** (Playwright + Chromium, against
+`D:\Projects\test\test-multi-window`, vite 5.4.21 + plugin-react 4.7.0, agent on
+4567): clicked the **real** FloatingBar `<div>` (true source line 15) — no
+line-34 workaround. Before the fix this inspected line 34 with an empty style
+list. After the fix:
+
+- Panel header reads `div — FloatingBar.tsx:15` (was `:34`) — the resolved line
+  now surfaces in the UI.
+- `/inspect` returned the FloatingBar div's 12 real style rows (`position:fixed`,
+  `top:12`, `background:#fff`, `boxShadow:…`, etc.), confirming the agent
+  resolved the correct element from the shifted line + preserved column (5) +
+  tag (`div`).
+- Edited `background` → `#ffe4c4`, Apply → `✅ Applied`; Vite HMR repainted the
+  live element (computed `background-color: rgb(255,228,196)`); the on-disk
+  `FloatingBar.tsx` contained `#ffe4c4`.
+
+A latent gap surfaced during verification and was fixed in the same branch: the
+panel header had displayed the raw `_debugSource` line; `InspectOk` now carries
+the resolved `line` and the panel renders it (commit `e22c9d3`). Target app
+restored; verification scripts removed; ports freed.

@@ -6,11 +6,13 @@ import { fileURLToPath } from "node:url";
 import { Project } from "ts-morph";
 import { processEdits } from "./apply.js";
 import { inspectJsxElement } from "./inspect.js";
+import { createHistory } from "./history.js";
 import { isEditableSourcePath } from "./paths.js";
 import type { EditRequest, InspectRequest } from "../shared/types.js";
 import { landingHtml } from "./bookmarklet.js";
 
 const PORT = Number(process.env.PORT ?? 4567);
+const history = createHistory();
 
 // dist/ and the backup dir sit at this repo's root; this module lives in src/agent/.
 // Backups deliberately live in THIS repo so the target repo stays clean.
@@ -89,6 +91,21 @@ const server = createServer(async (req, res) => {
     }
   }
 
+  if (req.method === "GET" && pathname === "/history") {
+    return sendJson(res, 200, { status: "ok", ...history.state() });
+  }
+
+  if (req.method === "POST" && (pathname === "/undo" || pathname === "/redo")) {
+    try {
+      const step = pathname === "/undo" ? history.undo() : history.redo();
+      if (!step) return sendJson(res, 200, { status: "noop", ...history.state() });
+      writeFileSync(step.file, step.content, "utf8");
+      return sendJson(res, 200, { status: "ok", file: step.file, ...history.state() });
+    } catch (err) {
+      return sendJson(res, 500, { status: "error", message: (err as Error).message });
+    }
+  }
+
   if (req.method !== "POST" || pathname !== "/edit") return res.writeHead(404).end();
 
   try {
@@ -104,6 +121,7 @@ const server = createServer(async (req, res) => {
       mkdirSync(BACKUP_DIR, { recursive: true });
       copyFileSync(reqBody.file, join(BACKUP_DIR, `${basename(reqBody.file)}.${Date.now()}-${process.hrtime.bigint()}.bak`));
       writeFileSync(reqBody.file, result.newText, "utf8");
+      history.record(reqBody.file, original, result.newText);
     }
     sendJson(res, 200, result);
   } catch (err) {

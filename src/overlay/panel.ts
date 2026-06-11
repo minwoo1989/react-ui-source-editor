@@ -12,6 +12,7 @@ export interface PanelHandlers {
   onUndo(): Promise<HistoryResult>;
   onRedo(): Promise<HistoryResult>;
   onHistory(): Promise<{ canUndo: boolean; canRedo: boolean }>;
+  onNavigate(dir: "up" | "down"): void;
 }
 
 export function createPanel(handlers: PanelHandlers) {
@@ -23,6 +24,9 @@ export function createPanel(handlers: PanelHandlers) {
       .p{font:13px sans-serif;background:#fff;border:1px solid #ccc;border-radius:8px;
          box-shadow:0 4px 16px rgba(0,0,0,.15);width:320px;padding:12px;max-height:85vh;overflow:auto}
       .t{font-weight:600;margin-bottom:8px}
+      .nav{display:flex;gap:6px;margin-bottom:6px}
+      .nav button{padding:1px 8px;cursor:pointer;font:inherit}
+      .nav button:disabled{opacity:.4;cursor:default}
       label{display:block;margin:6px 0 2px;color:#555}
       input{box-sizing:border-box;padding:4px;font:inherit}
       input:disabled{background:#f5f5f5;color:#999}
@@ -40,6 +44,7 @@ export function createPanel(handlers: PanelHandlers) {
     </style>
     <div class="p">
       <div class="t" id="who">No selection</div>
+      <div class="nav"><button id="nav-up" disabled title="parent (↑)">↑</button><button id="nav-down" disabled title="child (↓)">↓</button></div>
       <label>style</label>
       <div id="styles"></div>
       <div class="row"><input class="k" id="newk" placeholder="property"><input class="v" id="newv" placeholder="value"></div>
@@ -198,6 +203,14 @@ export function createPanel(handlers: PanelHandlers) {
     .then((s) => setHistoryButtons(s.canUndo, s.canRedo))
     .catch(() => { /* origin not detected / agent down — leave disabled */ });
 
+  function setNavButtons(canUp: boolean, canDown: boolean) {
+    $<HTMLButtonElement>("nav-up").disabled = !canUp;
+    $<HTMLButtonElement>("nav-down").disabled = !canDown;
+  }
+
+  $("nav-up").onclick = () => handlers.onNavigate("up");
+  $("nav-down").onclick = () => handlers.onNavigate("down");
+
   return {
     host,
     async setTarget(name: string, target: PanelTarget | null) {
@@ -208,6 +221,7 @@ export function createPanel(handlers: PanelHandlers) {
         loc = null;
         snapshot = null;
         clearEditors();
+        setNavButtons(false, false);
         return;
       }
       whoName = name;
@@ -224,8 +238,10 @@ export function createPanel(handlers: PanelHandlers) {
       loc = null;
       snapshot = null;
       clearEditors();
+      setNavButtons(false, false);
       $("who").textContent = "⚠ agent 연결 불가";
       out.textContent = `❌ ${message}`;
     },
+    setNav: setNavButtons,
   };
 }

@@ -1,39 +1,85 @@
 "use strict";
 (() => {
   // src/overlay/fiber.ts
-  function fiberTypeName(fiber) {
-    const t = fiber.type;
+  function typeName(t) {
     if (typeof t === "string") return t;
     if (typeof t === "function") return t.displayName || t.name || void 0;
     if (t && typeof t === "object") {
-      return t.displayName || t.render && (t.render.displayName || t.render.name) || t.type && typeof t.type === "function" && (t.type.displayName || t.type.name) || void 0;
-    }
-    return void 0;
-  }
-  function sourceLocFor(node) {
-    const key = Object.keys(node).find((k) => k.startsWith("__reactFiber$"));
-    if (!key) return void 0;
-    let fiber = node[key];
-    while (fiber) {
-      const src = fiber._debugSource;
-      if (src && src.fileName) {
-        return { file: src.fileName, line: src.lineNumber, column: src.columnNumber, tag: fiberTypeName(fiber) };
+      const o = t;
+      if (o.displayName) return o.displayName;
+      if (o.render) {
+        const n = o.render.displayName || o.render.name;
+        if (n) return n;
       }
-      fiber = fiber.return;
+      if (o.type && typeof o.type === "function") {
+        const ft = o.type;
+        const n = ft.displayName || ft.name;
+        if (n) return n;
+      }
+      return void 0;
     }
     return void 0;
   }
-  function componentNameFor(node) {
+  function hasSource(f) {
+    return !!(f._debugSource && f._debugSource.fileName);
+  }
+  function sameLoc(a, b) {
+    const x = a._debugSource, y = b._debugSource;
+    return !!x && !!y && x.fileName === y.fileName && x.lineNumber === y.lineNumber && x.columnNumber === y.columnNumber;
+  }
+  function isElement(x) {
+    return !!x && typeof x === "object" && x.nodeType === 1;
+  }
+  function fiberOf(node) {
     const key = Object.keys(node).find((k) => k.startsWith("__reactFiber$"));
-    if (!key) return node.tagName.toLowerCase();
-    let fiber = node[key];
-    while (fiber) {
-      const t = fiber.type;
-      if (typeof t === "function") return t.displayName || t.name || "Component";
-      if (typeof t === "string") return t;
-      fiber = fiber.return;
+    return key ? node[key] : void 0;
+  }
+  function nearestSourceFiber(fiber) {
+    let f = fiber;
+    while (f) {
+      if (hasSource(f)) return f;
+      f = f.return;
     }
-    return node.tagName.toLowerCase();
+    return void 0;
+  }
+  function parentSourceFiber(fiber) {
+    let f = fiber.return;
+    while (f) {
+      if (hasSource(f) && !sameLoc(f, fiber)) return f;
+      f = f.return;
+    }
+    return void 0;
+  }
+  function childSourceFiber(fiber) {
+    function dfs(start) {
+      for (let c = start; c; c = c.sibling) {
+        if (hasSource(c) && !sameLoc(c, fiber)) return c;
+        const deeper = dfs(c.child);
+        if (deeper) return deeper;
+      }
+      return void 0;
+    }
+    return dfs(fiber.child);
+  }
+  function locOf(fiber) {
+    const s = fiber._debugSource;
+    if (!s || !s.fileName) return void 0;
+    return { file: s.fileName, line: s.lineNumber ?? 0, column: s.columnNumber ?? 0, tag: typeName(fiber.type) };
+  }
+  function domNodeOf(fiber) {
+    if (isElement(fiber.stateNode)) return fiber.stateNode;
+    function dfs(start) {
+      for (let c = start; c; c = c.sibling) {
+        if (isElement(c.stateNode)) return c.stateNode;
+        const deeper = dfs(c.child);
+        if (deeper) return deeper;
+      }
+      return void 0;
+    }
+    return dfs(fiber.child);
+  }
+  function nameOf(fiber) {
+    return typeName(fiber.type) ?? "element";
   }
 
   // src/overlay/editsDiff.ts
@@ -79,6 +125,9 @@
       .p{font:13px sans-serif;background:#fff;border:1px solid #ccc;border-radius:8px;
          box-shadow:0 4px 16px rgba(0,0,0,.15);width:320px;padding:12px;max-height:85vh;overflow:auto}
       .t{font-weight:600;margin-bottom:8px}
+      .nav{display:flex;gap:6px;margin-bottom:6px}
+      .nav button{padding:1px 8px;cursor:pointer;font:inherit}
+      .nav button:disabled{opacity:.4;cursor:default}
       label{display:block;margin:6px 0 2px;color:#555}
       input{box-sizing:border-box;padding:4px;font:inherit}
       input:disabled{background:#f5f5f5;color:#999}
@@ -96,6 +145,7 @@
     </style>
     <div class="p">
       <div class="t" id="who">No selection</div>
+      <div class="nav"><button id="nav-up" disabled title="parent (\u2191)">\u2191</button><button id="nav-down" disabled title="child (\u2193)">\u2193</button></div>
       <label>style</label>
       <div id="styles"></div>
       <div class="row"><input class="k" id="newk" placeholder="property"><input class="v" id="newv" placeholder="value"></div>
@@ -242,6 +292,12 @@ ${res.reason}` : `\u274C ${res.message}`;
     $("redo").onclick = () => void runHistory("redo");
     void handlers.onHistory().then((s) => setHistoryButtons(s.canUndo, s.canRedo)).catch(() => {
     });
+    function setNavButtons(canUp, canDown) {
+      $("nav-up").disabled = !canUp;
+      $("nav-down").disabled = !canDown;
+    }
+    $("nav-up").onclick = () => handlers.onNavigate("up");
+    $("nav-down").onclick = () => handlers.onNavigate("down");
     return {
       host,
       async setTarget(name, target) {
@@ -252,6 +308,7 @@ ${res.reason}` : `\u274C ${res.message}`;
           loc = null;
           snapshot = null;
           clearEditors();
+          setNavButtons(false, false);
           return;
         }
         whoName = name;
@@ -268,9 +325,11 @@ ${res.reason}` : `\u274C ${res.message}`;
         loc = null;
         snapshot = null;
         clearEditors();
+        setNavButtons(false, false);
         $("who").textContent = "\u26A0 agent \uC5F0\uACB0 \uBD88\uAC00";
         out.textContent = `\u274C ${message}`;
-      }
+      },
+      setNav: setNavButtons
     };
   }
 
@@ -306,6 +365,12 @@ ${res.reason}` : `\u274C ${res.message}`;
     }
     document.addEventListener("mousemove", onMove, true);
     document.addEventListener("click", onClick, true);
+    return {
+      highlight: show,
+      hide() {
+        hl.style.display = "none";
+      }
+    };
   }
 
   // src/overlay/agentOrigin.ts
@@ -355,20 +420,35 @@ ${res.reason}` : `\u274C ${res.message}`;
   }
 
   // src/overlay/index.ts
+  var current;
+  var inspector;
+  function selectFiber(fiber) {
+    current = fiber;
+    const dom = domNodeOf(fiber);
+    if (dom) inspector?.highlight(dom);
+    void panel.setTarget(nameOf(fiber), locOf(fiber) ?? null);
+    panel.setNav(!!parentSourceFiber(fiber), !!childSourceFiber(fiber));
+  }
   var panel = createPanel({
     onInspect: sendInspect,
     onApply: sendEdit,
     onUndo: sendUndo,
     onRedo: sendRedo,
-    onHistory: fetchHistory
+    onHistory: fetchHistory,
+    onNavigate: (dir) => {
+      if (!current) return;
+      const next = dir === "up" ? parentSourceFiber(current) : childSourceFiber(current);
+      if (next) selectFiber(next);
+    }
   });
   if (AGENT_ORIGIN === null) {
     panel.setError("\uC5D0\uC774\uC804\uD2B8 origin\uC744 \uAC10\uC9C0\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4 \u2014 \uBD81\uB9C8\uD074\uB9BF\uC73C\uB85C \uB2E4\uC2DC \uC5EC\uC138\uC694.");
     console.error("[ui-modifier] agent origin not detected from document.currentScript");
   } else {
-    createInspector((el) => {
-      const loc = sourceLocFor(el);
-      void panel.setTarget(componentNameFor(el), loc ?? null);
+    inspector = createInspector((el) => {
+      const f = nearestSourceFiber(fiberOf(el));
+      if (f) selectFiber(f);
+      else void panel.setTarget(el.tagName.toLowerCase(), null);
     }, panel.host);
   }
   console.log("[ui-modifier] overlay ready");

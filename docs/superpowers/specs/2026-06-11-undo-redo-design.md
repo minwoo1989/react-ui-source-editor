@@ -122,3 +122,26 @@ the detected `AGENT_ORIGIN` (POST for undo/redo, GET for history).
 - Content-match / external-edit conflict detection.
 - Per-file undo scope, stack-size caps, keyboard shortcuts.
 - Features #4–#7 and the security boundary (#2, deferred).
+
+## Verification (2026-06-11)
+
+**Automated gate:** `npx vitest run` — 94/94 (incl. 6 new `createHistory` tests).
+`npx tsc --noEmit` — clean. `npm run build:overlay` rebuilt `dist/overlay.js`
+(committed).
+
+**Browser smoke (Playwright + Chromium)** against `D:\Projects\test\test-multi-window`
+(agent on 4567, vite on 5173), editing two different files:
+
+- Edit 1 — FloatingBar `background` → `#ffe4c4`: on disk, Undo button enabled.
+- Edit 2 — WindowToggleBar `background` → `#e6f4ff`: on disk.
+- Undo #1 → reverted **WindowToggleBar** (newest, global LIFO); FloatingBar still
+  edited; Redo enabled.
+- Undo #2 → reverted FloatingBar; Undo button disabled (stack empty).
+- Redo → re-applied FloatingBar (`#ffe4c4` back on disk).
+
+Confirms global LIFO ordering across files, correct Undo/Redo button enable/
+disable at the stack boundaries, and HMR-visible reverts. Target components
+restored; smoke script removed; servers stopped; ports freed.
+
+A post-review fix (`6990a67`) was folded in: on an `error` response the panel
+re-syncs the buttons from the agent's true state, and a `noop` shows a message.

@@ -38,8 +38,9 @@ describe("normalizeEol", () => {
   });
 });
 
-describe("processEdits output normalized to the source EOL", () => {
+describe("normalizeEol applied to real processEdits output (CRLF source)", () => {
   it("yields no lone \\n after normalizing a CRLF source edit", () => {
+    // Tests the detectEol+normalizeEol composition on real ts-morph output, not the server wiring (HTTP E2E covers that).
     const original = [
       "const C = () => (",
       "  <button",
@@ -60,6 +61,9 @@ describe("processEdits output normalized to the source EOL", () => {
     const result = processEdits(project, req);
     expect(result.status).toBe("applied");
     if (result.status !== "applied") return;
+
+    // ts-morph inserts LF on the added line, so the raw output has a lone \n in this CRLF file.
+    expect(/(?<!\r)\n/.test(result.newText)).toBe(true);
 
     const normalized = normalizeEol(result.newText, detectEol(original));
     expect(normalized).toContain("padding");

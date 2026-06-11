@@ -93,7 +93,7 @@ const server = createServer(async (req, res) => {
       const body = JSON.parse(await readBody(req)) as InspectRequest;
       const sf = new Project({ useInMemoryFileSystem: true })
         .createSourceFile(memPath(body.file), readSource(body.file));
-      return sendJson(res, 200, inspectJsxElement(sf, body.line, body.column));
+      return sendJson(res, 200, inspectJsxElement(sf, body.line, body.column, body.tag));
     } catch (err) {
       return sendJson(res, 500, { status: "error", message: (err as Error).message });
     }

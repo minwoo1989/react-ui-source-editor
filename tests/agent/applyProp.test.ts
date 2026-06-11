@@ -1,12 +1,12 @@
 // tests/agent/applyProp.test.ts
 import { describe, it, expect } from "vitest";
 import { Project, SyntaxKind } from "ts-morph";
-import { locateJsxElement } from "../../src/agent/locate.js";
+import { resolveJsxElement } from "../../src/agent/locate.js";
 import { applyProp } from "../../src/agent/applyProp.js";
 
 function elementAt(text: string, line: number, col: number) {
   const sf = new Project({ useInMemoryFileSystem: true }).createSourceFile("F.tsx", text);
-  const opening = locateJsxElement(sf, line, col)!;
+  const opening = resolveJsxElement(sf, line, col)!;
   const el = opening.getParentIfKind(SyntaxKind.JsxElement) ?? opening;
   return { sf, el };
 }

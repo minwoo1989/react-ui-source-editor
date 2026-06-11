@@ -88,7 +88,7 @@ describe("inspectJsxElement", () => {
   it("errors when no JSX element exists at the position", () => {
     const sf = sfOf(`const x = 1;`);
     const res = inspectJsxElement(sf, 1, 1);
-    expect(res).toEqual({ status: "error", message: "no JSX element at position" });
+    expect(res).toEqual({ status: "error", message: "no JSX element near line 1" });
   });
 
   it("returns spread entries as raw read-only rows", () => {
@@ -99,5 +99,27 @@ describe("inspectJsxElement", () => {
       { property: "...base", value: "", editable: false },
       { property: "color", value: "red", editable: true },
     ]);
+  });
+
+  it("resolves a line-shifted selection via column + tag", () => {
+    const sf = sfOf([
+      "import x from 'y';",                 // 1
+      "export const C = () => (",           // 2
+      '  <button style={{ color: "red" }}>hi</button>', // 3  <button col 3
+      ");",                                 // 4
+    ].join("\n"));
+    // report line 13 (a +10 shift), correct column 3, tag "button"
+    const res = inspectJsxElement(sf, 13, 3, "button");
+    expect(res.status).toBe("ok");
+    if (res.status === "ok") {
+      expect(res.style.find((s) => s.property === "color")?.value).toBe("red");
+    }
+  });
+
+  it("returns an explicit error (not an empty ok) when nothing resolves", () => {
+    const sf = sfOf('const C = () => (<button>hi</button>);');
+    const res = inspectJsxElement(sf, 999, 99, "button");
+    expect(res.status).toBe("error");
+    if (res.status === "error") expect(res.message).toMatch(/near line 999/);
   });
 });

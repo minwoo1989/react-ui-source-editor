@@ -1,6 +1,6 @@
 // src/agent/inspect.ts
 import { Node, SourceFile, SyntaxKind } from "ts-morph";
-import { locateJsxElement } from "./locate.js";
+import { resolveJsxElement } from "./locate.js";
 import type { InspectField, InspectResult, InspectStyleEntry } from "../shared/types.js";
 
 function getOpening(el: Node): any {
@@ -62,9 +62,9 @@ function textField(el: Node): InspectField | undefined {
 }
 
 /** Read source truth (style object, className, text) for the JSX element at line/column. */
-export function inspectJsxElement(sf: SourceFile, line: number, column: number): InspectResult {
-  const opening = locateJsxElement(sf, line, column);
-  if (!opening) return { status: "error", message: "no JSX element at position" };
+export function inspectJsxElement(sf: SourceFile, line: number, column: number, tag?: string): InspectResult {
+  const opening = resolveJsxElement(sf, line, column, tag);
+  if (!opening) return { status: "error", message: `no ${tag ?? "JSX"} element near line ${line}` };
   const el = opening.getParentIfKind(SyntaxKind.JsxElement) ?? opening;
   const op = getOpening(el);
 

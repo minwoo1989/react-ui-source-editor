@@ -1,7 +1,7 @@
 // src/agent/apply.ts
 import { Project, Node, SyntaxKind } from "ts-morph";
 import type { EditRequest, EditResult, Edit } from "../shared/types.js";
-import { locateJsxElement } from "./locate.js";
+import { resolveJsxElement } from "./locate.js";
 import { classifyEdit } from "./classify.js";
 import { applyStyle, removeStyle } from "./applyStyle.js";
 import { applyProp } from "./applyProp.js";
@@ -31,8 +31,8 @@ export function processEdits(project: Project, req: EditRequest): EditResult {
   const sf = project.getSourceFile(req.file);
   if (!sf) return { status: "error", message: `file not loaded: ${req.file}` };
 
-  const opening = locateJsxElement(sf, req.line, req.column);
-  if (!opening) return { status: "error", message: "no JSX element at position" };
+  const opening = resolveJsxElement(sf, req.line, req.column, req.tag);
+  if (!opening) return { status: "error", message: `no ${req.tag ?? "JSX"} element near line ${req.line}` };
   const el = elementFromOpening(opening);
 
   const before = sf.getFullText();

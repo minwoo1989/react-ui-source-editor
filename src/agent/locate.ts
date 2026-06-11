@@ -65,11 +65,3 @@ export function resolveJsxElement(
     .sort((a, b) => b.line - a.line);
   return ranked.length > 0 ? ranked[0].n : undefined;
 }
-
-/**
- * Backward-compatible exact-only entry point. Temporary delegate so existing
- * callers compile until they migrate to resolveJsxElement in Task 3.
- */
-export function locateJsxElement(sf: SourceFile, line: number, column: number): Node | undefined {
-  return resolveJsxElement(sf, line, column);
-}

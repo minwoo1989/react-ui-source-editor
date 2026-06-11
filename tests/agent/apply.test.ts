@@ -51,6 +51,41 @@ describe("processEdits", () => {
     expect(res.status).toBe("error");
     if (res.status === "error") expect(res.message).toMatch(/no button element near line 1/);
   });
+
+  it("applies an edit when the reported line is shifted (resolver corrects it)", () => {
+    const project = projectWith([
+      "import x from 'y';",                          // 1
+      "export const C = () => (",                    // 2
+      '  <Button type="default" />',                 // 3  <Button col 3
+      ");",                                          // 4
+    ].join("\n"));
+    const req: EditRequest = {
+      file: "/F.tsx", line: 13, column: 3, tag: "Button", // line 13 = +10 shift from true line 3
+      edits: [{ kind: "prop", name: "type", value: "primary" }],
+    };
+    const res = processEdits(project, req);
+    expect(res.status).toBe("applied");
+    if (res.status === "applied") expect(res.newText).toContain(`type="primary"`);
+  });
+
+  it("suggested instruction reports the resolved line, not the shifted one", () => {
+    const project = projectWith([
+      "import x from 'y';",                          // 1
+      "export const C = () => (",                    // 2
+      "  <Button type={dynamic} />",                 // 3  dynamic prop -> unsafe -> suggested
+      ");",                                          // 4
+    ].join("\n"));
+    const req: EditRequest = {
+      file: "/F.tsx", line: 13, column: 3, tag: "Button",
+      edits: [{ kind: "prop", name: "type", value: "primary" }],
+    };
+    const res = processEdits(project, req);
+    expect(res.status).toBe("suggested");
+    if (res.status === "suggested") {
+      expect(res.instruction).toContain(":3,");   // resolved line 3
+      expect(res.instruction).not.toContain(":13,"); // NOT the shifted line
+    }
+  });
 });
 
 describe("processEdits: styleRemove", () => {

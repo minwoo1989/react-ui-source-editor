@@ -84,4 +84,18 @@ describe("resolveJsxElement", () => {
     expect(node).toBeDefined();
     expect(sf.compilerNode.getLineAndCharacterOfPosition(node!.getStart()).line + 1).toBe(6);
   });
+
+  it("offset-0 with tag mismatch: still resolves the element at the exact reported line", () => {
+    const sf = sourceFileFrom([
+      "export const C = () => (",          // 1
+      "  <Button>x</Button>",              // 2  <Button at line 2 col 3
+      ");",                                // 3
+    ].join("\n"));
+    // accurate line (2) and column (3), but a tag that doesn't match <Button>.
+    // exact phase finds <Button> but tag check fails -> tolerant phase must still
+    // resolve it via column at the SAME line (requires line <= reported, not <).
+    const node = resolveJsxElement(sf, 2, 3, "div");
+    expect(node).toBeDefined();
+    expect(sf.compilerNode.getLineAndCharacterOfPosition(node!.getStart()).line + 1).toBe(2);
+  });
 });

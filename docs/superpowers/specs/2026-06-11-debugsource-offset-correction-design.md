@@ -94,7 +94,7 @@ Replaces the current exact-only `locateJsxElement(sf, line, column)` in
      that subset is empty, fall back to all column matches. (The soft fallback
      handles member-expression tags like `Typography.Text` and antd wrappers
      whose runtime fiber name differs from the source identifier.)
-   - Among candidates with `line < reportedLine` (the offset is positive):
+   - Among candidates with `line <= reportedLine` (the offset is positive):
      **exactly one → return it**; **several → return the closest from below**
      (best-effort); **none → return `undefined`**.
 
@@ -138,7 +138,7 @@ name within the offset window (~19 lines) above the reported line. In that case
 it best-guesses the nearest match from below. This is rare in practice — clicks
 land on distinctive elements, and per-component root elements are typically
 unique by (column, tag). Eliminating it would require sending the ancestor chain
-(the rejected approach), which is out of scope.
+(the rejected approach), which is out of scope. A narrow superset of the same shape: in the column-only fallback (tag absent or unmatched), a same-column element whose tag text coincidentally equals the clicked element's runtime name and sits above it can be preferred over the true twin — same rarity, same nearest-below best-guess.
 
 ## Testing
 

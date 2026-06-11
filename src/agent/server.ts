@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 import { Project } from "ts-morph";
 import { processEdits } from "./apply.js";
 import { inspectJsxElement } from "./inspect.js";
-import { listDir, listDrives } from "./fsList.js";
 import { isEditableSourcePath } from "./paths.js";
 import type { EditRequest, InspectRequest } from "../shared/types.js";
 import { landingHtml } from "./bookmarklet.js";
@@ -77,15 +76,6 @@ const server = createServer(async (req, res) => {
     }
     res.writeHead(200, { "Content-Type": "application/javascript" });
     return res.end(bundle);
-  }
-
-  if (req.method === "GET" && pathname === "/fs") {
-    try {
-      const path = new URL(req.url ?? "/fs", "http://localhost").searchParams.get("path");
-      return sendJson(res, 200, path ? listDir(path) : listDrives());
-    } catch (err) {
-      return sendJson(res, 500, { status: "error", message: (err as Error).message });
-    }
   }
 
   if (req.method === "POST" && pathname === "/inspect") {

@@ -88,19 +88,11 @@
       .row .v{flex:1;min-width:0}
       .row button{padding:0 6px;cursor:pointer}
       .row.removed input{text-decoration:line-through;color:#999}
-      .pathrow{display:flex;gap:4px}
-      .pathrow input{flex:1;min-width:0}
-      .browser{border:1px solid #ddd;margin-top:4px;max-height:160px;overflow:auto;font-size:12px}
-      .browser div{padding:2px 6px;cursor:pointer;white-space:nowrap}
-      .browser div:hover{background:#f0f6ff}
       .apply{margin-top:10px;padding:6px 10px;cursor:pointer}
       .out{margin-top:8px;white-space:pre-wrap;font:11px monospace;color:#333;word-break:break-all}
     </style>
     <div class="p">
       <div class="t" id="who">No selection</div>
-      <label>File</label>
-      <div class="pathrow"><input id="file" placeholder="(absolute path)"><button id="browse" title="browse">&#128193;</button></div>
-      <div class="browser" id="browser" style="display:none"></div>
       <label>style</label>
       <div id="styles"></div>
       <div class="row"><input class="k" id="newk" placeholder="property"><input class="v" id="newv" placeholder="value"></div>
@@ -113,7 +105,7 @@
     const $ = (id) => root.getElementById(id);
     const out = $("out");
     const stylesBox = $("styles");
-    const browser = $("browser");
+    let file = null;
     let loc = null;
     let snapshot = null;
     let inspectGen = 0;
@@ -182,8 +174,8 @@
         text: text.disabled ? null : text.value
       };
     }
-    async function inspectInto(file) {
-      if (!loc) return;
+    async function inspectInto() {
+      if (file === null || !loc) return;
       const gen = ++inspectGen;
       try {
         const result = await handlers.onInspect({ file, line: loc.line, column: loc.column, tag: loc.tag });
@@ -195,11 +187,10 @@
       }
     }
     $("apply").onclick = async () => {
-      if (!loc || !snapshot) {
+      if (file === null || !loc || !snapshot) {
         out.textContent = "No editable selection.";
         return;
       }
-      const file = $("file").value.trim();
       const edits = buildEdits(snapshot, collectState());
       if (edits.length === 0) {
         out.textContent = "Nothing to apply.";
@@ -210,58 +201,18 @@
         out.textContent = res.status === "applied" ? "\u2705 Applied. HMR will reload." : res.status === "suggested" ? `\u{1F4CB} Suggested:
 ${res.instruction}
 ${res.reason}` : `\u274C ${res.message}`;
-        if (res.status === "applied") await inspectInto(file);
+        if (res.status === "applied") await inspectInto();
       } catch (e) {
         out.textContent = `\u274C agent unreachable: ${e.message}`;
       }
     };
-    async function showDir(path) {
-      let listing;
-      try {
-        listing = await handlers.onListDir(path);
-      } catch (e) {
-        out.textContent = `\u274C fs: ${e.message}`;
-        return;
-      }
-      browser.style.display = "block";
-      browser.innerHTML = "";
-      if (listing.path) {
-        const up = document.createElement("div");
-        up.textContent = "\u2B06 ..";
-        up.onclick = () => showDir(listing.parent || void 0);
-        browser.appendChild(up);
-      }
-      for (const e of listing.entries) {
-        const item = document.createElement("div");
-        item.textContent = (e.dir ? "\u{1F4C1} " : "\u{1F4C4} ") + e.name;
-        item.onclick = async () => {
-          if (e.dir) {
-            await showDir(e.path);
-            return;
-          }
-          $("file").value = e.path;
-          browser.style.display = "none";
-          await inspectInto(e.path);
-        };
-        browser.appendChild(item);
-      }
-    }
-    $("browse").onclick = async () => {
-      if (browser.style.display !== "none") {
-        browser.style.display = "none";
-        return;
-      }
-      const file = $("file").value.trim();
-      const dir = file.replace(/[\\/][^\\/]*$/, "");
-      await showDir(dir && dir !== file ? dir : void 0);
-    };
     return {
       host,
       async setTarget(name, target) {
-        browser.style.display = "none";
         if (!target) {
           inspectGen++;
           $("who").textContent = `${name} \u2014 no source info`;
+          file = null;
           loc = null;
           snapshot = null;
           clearEditors();
@@ -270,9 +221,9 @@ ${res.reason}` : `\u274C ${res.message}`;
         whoName = name;
         whoShort = target.file.split(/[\\/]/).pop() ?? "";
         $("who").textContent = `${whoName} \u2014 ${whoShort}:${target.line}`;
+        file = target.file;
         loc = { line: target.line, column: target.column, tag: target.tag };
-        $("file").value = target.file;
-        await inspectInto(target.file);
+        await inspectInto();
       }
     };
   }
@@ -329,19 +280,11 @@ ${res.reason}` : `\u274C ${res.message}`;
     });
     return await res.json();
   }
-  async function fetchFsListing(path) {
-    const url = path ? `${AGENT_ORIGIN}/fs?path=${encodeURIComponent(path)}` : `${AGENT_ORIGIN}/fs`;
-    const res = await fetch(url);
-    const body = await res.json();
-    if (!res.ok) throw new Error(body.message ?? `fs request failed (${res.status})`);
-    return body;
-  }
 
   // src/overlay/index.ts
   var panel = createPanel({
     onInspect: sendInspect,
-    onApply: sendEdit,
-    onListDir: fetchFsListing
+    onApply: sendEdit
   });
   createInspector((el) => {
     const loc = sourceLocFor(el);

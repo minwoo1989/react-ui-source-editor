@@ -204,17 +204,61 @@ Agent stopped (PID killed); port 4567 confirmed free; temp dir deleted.
 
 Suggested target app: `D:\Projects\test\test-multi-window` (antd5 + Vite).
 
-- [ ] Drop bookmarklet → overlay loads, click a component → path input auto-fills
-      with `_debugSource` absolute path
-- [ ] `/inspect` round-trip: style rows render with correct property/value,
+- [x] Drop bookmarklet → overlay loads, click a component → path input auto-fills
+      with `_debugSource` absolute path — **PARTIAL FAIL**: path fills correctly,
+      but line/column are wrong on this stack (see Browser verification below)
+- [x] `/inspect` round-trip: style rows render with correct property/value,
       className and Text fields populated
-- [ ] Edit style row value, remove a property, change className, change text →
+- [x] Edit style row value, remove a property, change className, change text →
       Apply → HMR reload shows the change in the browser
-- [ ] Browse button: navigate the file tree via `/fs`, select a `.tsx` file →
+- [x] Browse button: navigate the file tree via `/fs`, select a `.tsx` file →
       path input updates, `/inspect` fires again
-- [ ] Read-only rendering: select an element with `style={styles}` (variable
+- [x] Read-only rendering: select an element with `style={styles}` (variable
       reference) or `className={cls}` (expression) — rows render greyed/disabled,
       Apply is a no-op for those fields
+
+### Browser verification (2026-06-11, Playwright + Chromium)
+
+Target: `D:\Projects\test\test-multi-window` (vite 5.4.21, @vitejs/plugin-react
+4.7.0, react 18.3.1, antd 5). Agent on 4567, vite on 5173. Bookmarklet snippet
+executed verbatim in-page (drag-to-bar not automatable).
+
+**❌ BLOCKER FOUND — `_debugSource` line shift.** Clicking the FloatingBar
+`<div>` (true source line 15) fills the path correctly but reports **line 34,
+col 5**. Root cause confirmed by fetching the vite-transformed module
+(`GET /src/components/FloatingBar.tsx`): the served code literally contains
+`lineNumber: 34` — the JSX dev transform computes positions *after*
+@vitejs/plugin-react's refresh preamble (~19 lines) is prepended, so every
+`_debugSource` line is shifted by a constant per-file offset. The overlay's
+verbatim pass-through then inspects the wrong line (here the file's closing
+`}`), rendering an empty/garbage panel. Click-to-edit is therefore broken on
+the stock Vite dev stack; only the file path survives.
+
+**Everything downstream of a correct loc passes.** Verified through the real
+panel UI by planting sacrificial components whose JSX sits exactly at the
+reported loc 34:5, selected via the Browse tree (a genuine UI path):
+
+- Landing page 200, draggable `javascript:` anchor; overlay injects, panel
+  renders, hover-highlight + click-capture work; CORS fine across 5173→4567.
+- Inspect round-trip: 7 style rows with correct values; non-literal value row
+  (`zIndex: PT_Z`) rendered greyed with remove disabled; className and Text
+  populated.
+- Edit loop: value change + row remove + new-property add + className + text in
+  one Apply → `✅ Applied` → vite HMR repainted the live element (computed
+  background/outline/class/text all confirmed) → on-disk file matched →
+  panel auto-re-inspected with fresh rows. Overlay survived HMR.
+- Browse: drive-root/parent/descend navigation works; selecting a `.tsx`
+  re-fires `/inspect`; bogus path shows `❌ fs: ENOENT …`.
+- Read-only: `style={roStyle}` → no style rows (variable ref); template-literal
+  className → greyed input showing the raw expression; Apply → `Nothing to
+  apply.`; file untouched.
+- Probes: Apply against a missing absolute path surfaces
+  `❌ file not found: …` in the panel; Apply with no changes is a no-op.
+
+Screenshots in `.verify-shots/` (untracked). Follow-up needed: correct the
+preamble offset (e.g. map `_debugSource` through the served module's sourcemap,
+or locate by nearest JSX whose tag matches) before the click-to-edit loop is
+usable on Vite dev servers.
 
 ### Known limitations
 

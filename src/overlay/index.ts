@@ -2,12 +2,11 @@
 import { sourceLocFor, componentNameFor } from "./fiber.js";
 import { createPanel } from "./panel.js";
 import { createInspector } from "./inspector.js";
-import { sendEdit, sendInspect, fetchFsListing } from "./api.js";
+import { sendEdit, sendInspect } from "./api.js";
 
 const panel = createPanel({
   onInspect: sendInspect,
   onApply: sendEdit,
-  onListDir: fetchFsListing,
 });
 
 createInspector((el) => {

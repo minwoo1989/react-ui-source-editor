@@ -61,18 +61,3 @@ export interface InspectOk {
 }
 
 export type InspectResult = InspectOk | { status: "error"; message: string };
-
-/** GET /fs response. */
-export interface FsEntry {
-  name: string;
-  /** Absolute path of the entry — the panel never joins paths itself. */
-  path: string;
-  dir: boolean;
-}
-
-export interface FsListing {
-  path: string;
-  /** Parent directory; "" when at a filesystem root (panel then requests the drive list). */
-  parent: string;
-  entries: FsEntry[];
-}

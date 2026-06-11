@@ -116,3 +116,25 @@ nav-state). ↑/↓ → `parent/childSourceFiber(current)` → `selectFiber`.
 - Choosing among multiple children (↓ always takes the depth-first first match).
 - Persisting the selected fiber across HMR reloads.
 - Features #6–#7.
+
+## Verification (2026-06-12)
+
+**Automated gate:** `npx vitest run` — 119/119 (15 new `fiber` helper tests).
+`npx tsc --noEmit` — clean. `npm run build:overlay` rebuilt `dist/overlay.js`
+(committed). Legacy `sourceLocFor`/`componentNameFor` removed (grep-confirmed).
+
+**Browser smoke (Playwright + Chromium)** against `D:\Projects\test\test-multi-window`:
+clicked the `<Segmented>` control inside FloatingBar, then pressed ↑/↓:
+
+- click → `Segmented — FloatingBar.tsx:41`, 0 style rows, ↓ disabled (leaf).
+- ↑ → `div — FloatingBar.tsx:15` (the FloatingBar root div), **12** style rows.
+- ↑ → `FloatingBar — App.tsx` (**cross-file** climb to the usage site), rows update.
+- ↑ → `div — App.tsx` (the wrapping layout div).
+- ↓ → back to `FloatingBar — App.tsx` (descend).
+
+Confirms parent↑/child↓ moves the selection through the source-bearing fiber
+tree across files, re-inspecting (the `who` line + style rows update each step)
+and highlighting each target, with the buttons reflecting tree availability.
+The corrected line for the FloatingBar `<div>` (`:15`) also shows feature #1's
+offset correction working through navigation. Smoke script removed; servers
+stopped; ports freed.

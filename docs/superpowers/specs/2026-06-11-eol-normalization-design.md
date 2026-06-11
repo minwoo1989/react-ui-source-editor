@@ -93,3 +93,18 @@ if (result.status === "applied") {
 - A project-wide / configurable EOL choice (always preserve the file's own).
 - Normalizing files the tool did not edit; trailing-newline policy; BOM handling.
 - Features #5–#7.
+
+## Verification (2026-06-11)
+
+**Automated gate:** `npx vitest run` — 104/104 (9 `eol` unit tests + 1 integration
+test). `npx tsc --noEmit` — clean. The integration test asserts that real
+`processEdits` output on a multi-line **CRLF** source with a line-adding edit
+(`{kind:"style", property:"padding"}`) **does** contain a lone `\n` before
+normalization, and **none** after `normalizeEol(newText, detectEol(original))` —
+proving the normalization is load-bearing.
+
+**HTTP E2E:** with the agent running, `POST /edit` against a real CRLF temp file
+(`Sample.tsx`, outside the repo) with the same line-adding edit →
+`status: "applied"`; the on-disk file afterward had `padding` present and a
+**lone-LF count of 0** (uniformly CRLF). Confirms the server actually normalizes
+to the source EOL on write. Temp file/script removed; agent stopped; port freed.

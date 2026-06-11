@@ -84,3 +84,23 @@ runs → `agentOrigin.ts` captures `currentScript.src` → `AGENT_ORIGIN` =
 - The agent `PORT` config mechanism (already `process.env.PORT`).
 - Network-failure UX (already handled).
 - Any of features #2–#7.
+
+## Verification (2026-06-11)
+
+**Automated gate:** `npx vitest run` — 88/88 (incl. 5 new `originFromSrc` tests).
+`npx tsc --noEmit` — clean. `grep -rn "localhost:4567" src/overlay/` — no matches.
+`npm run build:overlay` rebuilt `dist/overlay.js` (committed).
+
+**Browser smoke (Playwright + Chromium):** agent started with `PORT=4600`
+against `D:\Projects\test\test-multi-window` (vite on 5173). The landing page's
+bookmarklet href referenced `http://localhost:4600/overlay.js`. After injecting
+the overlay and clicking the FloatingBar `<div>`:
+
+- Panel showed `div — FloatingBar.tsx:15` with 12 style rows (inspect worked).
+- Network capture of `/inspect` + `/edit` request origins: `["http://localhost:4600"]`
+  — **never** `:4567`. `PASS origin-follows-port: true`.
+- Editing `background` → `#ffe4c4` + Apply wrote through `:4600`; the on-disk
+  `FloatingBar.tsx` contained `#ffe4c4`.
+
+Confirms the overlay targets whatever origin the bookmarklet loaded it from.
+Target app restored; smoke script removed; ports freed.

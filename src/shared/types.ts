@@ -61,3 +61,9 @@ export interface InspectOk {
 }
 
 export type InspectResult = InspectOk | { status: "error"; message: string };
+
+/** Result of an /undo, /redo, or /history call. */
+export type HistoryResult =
+  | { status: "ok"; file: string; canUndo: boolean; canRedo: boolean }
+  | { status: "noop"; canUndo: boolean; canRedo: boolean }
+  | { status: "error"; message: string };

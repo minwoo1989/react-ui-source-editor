@@ -1,6 +1,6 @@
 // src/overlay/panel.ts
 import type {
-  EditRequest, EditResult, InspectOk, InspectRequest, InspectResult,
+  EditRequest, EditResult, HistoryResult, InspectOk, InspectRequest, InspectResult,
 } from "../shared/types.js";
 import { buildEdits, type PanelState, type StyleRowState } from "./editsDiff.js";
 
@@ -9,6 +9,9 @@ export interface PanelTarget { file: string; line: number; column: number; tag?:
 export interface PanelHandlers {
   onInspect(req: InspectRequest): Promise<InspectResult>;
   onApply(req: EditRequest): Promise<EditResult>;
+  onUndo(): Promise<HistoryResult>;
+  onRedo(): Promise<HistoryResult>;
+  onHistory(): Promise<{ canUndo: boolean; canRedo: boolean }>;
 }
 
 export function createPanel(handlers: PanelHandlers) {
@@ -30,6 +33,9 @@ export function createPanel(handlers: PanelHandlers) {
       .row button{padding:0 6px;cursor:pointer}
       .row.removed input{text-decoration:line-through;color:#999}
       .apply{margin-top:10px;padding:6px 10px;cursor:pointer}
+      .hist{margin-top:6px;display:flex;gap:6px}
+      .hist button{padding:2px 10px;cursor:pointer;font:inherit}
+      .hist button:disabled{opacity:.4;cursor:default}
       .out{margin-top:8px;white-space:pre-wrap;font:11px monospace;color:#333;word-break:break-all}
     </style>
     <div class="p">
@@ -40,6 +46,7 @@ export function createPanel(handlers: PanelHandlers) {
       <label>className</label><input class="full" id="cls" placeholder="(none)">
       <label>Text</label><input class="full" id="text" placeholder="(none)">
       <button class="apply" id="apply">Apply</button>
+      <div class="hist"><button id="undo" disabled title="undo">↶</button><button id="redo" disabled title="redo">↷</button></div>
       <div class="out" id="out"></div>
     </div>`;
   document.body.appendChild(host);
@@ -146,11 +153,50 @@ export function createPanel(handlers: PanelHandlers) {
         : `❌ ${res.message}`;
       // Element start position is stable under our own edits (they only touch
       // text at/after the opening tag), so refresh rows from the new source.
-      if (res.status === "applied") await inspectInto();
+      if (res.status === "applied") {
+        setHistoryButtons(true, false);
+        await inspectInto();
+      }
     } catch (e) {
       out.textContent = `❌ agent unreachable: ${(e as Error).message}`;
     }
   };
+
+  function setHistoryButtons(canUndo: boolean, canRedo: boolean) {
+    $<HTMLButtonElement>("undo").disabled = !canUndo;
+    $<HTMLButtonElement>("redo").disabled = !canRedo;
+  }
+
+  async function runHistory(kind: "undo" | "redo") {
+    try {
+      const r = kind === "undo" ? await handlers.onUndo() : await handlers.onRedo();
+      if (r.status === "error") {
+        out.textContent = `❌ ${r.message}`;
+        // Error carries no stack state — re-sync buttons from the agent's truth.
+        void handlers.onHistory().then((s) => setHistoryButtons(s.canUndo, s.canRedo)).catch(() => {});
+        return;
+      }
+      setHistoryButtons(r.canUndo, r.canRedo);
+      if (r.status === "noop") {
+        out.textContent = kind === "undo" ? "↶ 더 되돌릴 내용이 없습니다." : "↷ 다시 적용할 내용이 없습니다.";
+        return;
+      }
+      const short = r.file.split(/[\\/]/).pop();
+      out.textContent = kind === "undo" ? `↶ ${short} 되돌림` : `↷ ${short} 다시 적용`;
+      // Refresh rows only if the affected file is the one currently shown.
+      if (r.file === file) await inspectInto();
+    } catch (e) {
+      out.textContent = `❌ agent unreachable: ${(e as Error).message}`;
+    }
+  }
+
+  $("undo").onclick = () => void runHistory("undo");
+  $("redo").onclick = () => void runHistory("redo");
+
+  // Initial button state from the agent (a prior session may have a stack).
+  void handlers.onHistory()
+    .then((s) => setHistoryButtons(s.canUndo, s.canRedo))
+    .catch(() => { /* origin not detected / agent down — leave disabled */ });
 
   return {
     host,

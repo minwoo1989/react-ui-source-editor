@@ -89,6 +89,9 @@
       .row button{padding:0 6px;cursor:pointer}
       .row.removed input{text-decoration:line-through;color:#999}
       .apply{margin-top:10px;padding:6px 10px;cursor:pointer}
+      .hist{margin-top:6px;display:flex;gap:6px}
+      .hist button{padding:2px 10px;cursor:pointer;font:inherit}
+      .hist button:disabled{opacity:.4;cursor:default}
       .out{margin-top:8px;white-space:pre-wrap;font:11px monospace;color:#333;word-break:break-all}
     </style>
     <div class="p">
@@ -99,6 +102,7 @@
       <label>className</label><input class="full" id="cls" placeholder="(none)">
       <label>Text</label><input class="full" id="text" placeholder="(none)">
       <button class="apply" id="apply">Apply</button>
+      <div class="hist"><button id="undo" disabled title="undo">\u21B6</button><button id="redo" disabled title="redo">\u21B7</button></div>
       <div class="out" id="out"></div>
     </div>`;
     document.body.appendChild(host);
@@ -201,11 +205,43 @@
         out.textContent = res.status === "applied" ? "\u2705 Applied. HMR will reload." : res.status === "suggested" ? `\u{1F4CB} Suggested:
 ${res.instruction}
 ${res.reason}` : `\u274C ${res.message}`;
-        if (res.status === "applied") await inspectInto();
+        if (res.status === "applied") {
+          setHistoryButtons(true, false);
+          await inspectInto();
+        }
       } catch (e) {
         out.textContent = `\u274C agent unreachable: ${e.message}`;
       }
     };
+    function setHistoryButtons(canUndo, canRedo) {
+      $("undo").disabled = !canUndo;
+      $("redo").disabled = !canRedo;
+    }
+    async function runHistory(kind) {
+      try {
+        const r = kind === "undo" ? await handlers.onUndo() : await handlers.onRedo();
+        if (r.status === "error") {
+          out.textContent = `\u274C ${r.message}`;
+          void handlers.onHistory().then((s) => setHistoryButtons(s.canUndo, s.canRedo)).catch(() => {
+          });
+          return;
+        }
+        setHistoryButtons(r.canUndo, r.canRedo);
+        if (r.status === "noop") {
+          out.textContent = kind === "undo" ? "\u21B6 \uB354 \uB418\uB3CC\uB9B4 \uB0B4\uC6A9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4." : "\u21B7 \uB2E4\uC2DC \uC801\uC6A9\uD560 \uB0B4\uC6A9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.";
+          return;
+        }
+        const short = r.file.split(/[\\/]/).pop();
+        out.textContent = kind === "undo" ? `\u21B6 ${short} \uB418\uB3CC\uB9BC` : `\u21B7 ${short} \uB2E4\uC2DC \uC801\uC6A9`;
+        if (r.file === file) await inspectInto();
+      } catch (e) {
+        out.textContent = `\u274C agent unreachable: ${e.message}`;
+      }
+    }
+    $("undo").onclick = () => void runHistory("undo");
+    $("redo").onclick = () => void runHistory("redo");
+    void handlers.onHistory().then((s) => setHistoryButtons(s.canUndo, s.canRedo)).catch(() => {
+    });
     return {
       host,
       async setTarget(name, target) {
@@ -304,11 +340,27 @@ ${res.reason}` : `\u274C ${res.message}`;
     });
     return await res.json();
   }
+  async function sendUndo() {
+    const res = await fetch(`${origin()}/undo`, { method: "POST" });
+    return await res.json();
+  }
+  async function sendRedo() {
+    const res = await fetch(`${origin()}/redo`, { method: "POST" });
+    return await res.json();
+  }
+  async function fetchHistory() {
+    const res = await fetch(`${origin()}/history`);
+    const body = await res.json();
+    return { canUndo: body.canUndo, canRedo: body.canRedo };
+  }
 
   // src/overlay/index.ts
   var panel = createPanel({
     onInspect: sendInspect,
-    onApply: sendEdit
+    onApply: sendEdit,
+    onUndo: sendUndo,
+    onRedo: sendRedo,
+    onHistory: fetchHistory
   });
   if (AGENT_ORIGIN === null) {
     panel.setError("\uC5D0\uC774\uC804\uD2B8 origin\uC744 \uAC10\uC9C0\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4 \u2014 \uBD81\uB9C8\uD074\uB9BF\uC73C\uB85C \uB2E4\uC2DC \uC5EC\uC138\uC694.");

@@ -1,6 +1,6 @@
 // src/overlay/api.ts
 import type {
-  EditRequest, EditResult, InspectRequest, InspectResult,
+  EditRequest, EditResult, HistoryResult, InspectRequest, InspectResult,
 } from "../shared/types.js";
 import { AGENT_ORIGIN } from "./agentOrigin.js";
 
@@ -26,4 +26,20 @@ export async function sendInspect(req: InspectRequest): Promise<InspectResult> {
     body: JSON.stringify(req),
   });
   return (await res.json()) as InspectResult;
+}
+
+export async function sendUndo(): Promise<HistoryResult> {
+  const res = await fetch(`${origin()}/undo`, { method: "POST" });
+  return (await res.json()) as HistoryResult;
+}
+
+export async function sendRedo(): Promise<HistoryResult> {
+  const res = await fetch(`${origin()}/redo`, { method: "POST" });
+  return (await res.json()) as HistoryResult;
+}
+
+export async function fetchHistory(): Promise<{ canUndo: boolean; canRedo: boolean }> {
+  const res = await fetch(`${origin()}/history`);
+  const body = (await res.json()) as { canUndo: boolean; canRedo: boolean };
+  return { canUndo: body.canUndo, canRedo: body.canRedo };
 }

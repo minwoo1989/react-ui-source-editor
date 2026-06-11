@@ -2,12 +2,15 @@
 import { sourceLocFor, componentNameFor } from "./fiber.js";
 import { createPanel } from "./panel.js";
 import { createInspector } from "./inspector.js";
-import { sendEdit, sendInspect } from "./api.js";
+import { sendEdit, sendInspect, sendUndo, sendRedo, fetchHistory } from "./api.js";
 import { AGENT_ORIGIN } from "./agentOrigin.js";
 
 const panel = createPanel({
   onInspect: sendInspect,
   onApply: sendEdit,
+  onUndo: sendUndo,
+  onRedo: sendRedo,
+  onHistory: fetchHistory,
 });
 
 if (AGENT_ORIGIN === null) {

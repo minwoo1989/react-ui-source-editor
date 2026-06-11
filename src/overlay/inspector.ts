@@ -35,4 +35,9 @@ export function createInspector(onSelect: (el: Element) => void, ignore?: Elemen
 
   document.addEventListener("mousemove", onMove, true);
   document.addEventListener("click", onClick, true);
+
+  return {
+    highlight: show,
+    hide() { hl.style.display = "none"; },
+  };
 }

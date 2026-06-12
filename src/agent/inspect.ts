@@ -1,7 +1,7 @@
 // src/agent/inspect.ts
 import { Node, SourceFile, SyntaxKind } from "ts-morph";
 import { resolveJsxElement } from "./locate.js";
-import type { InspectField, InspectResult, InspectStyleEntry } from "../shared/types.js";
+import type { InspectField, InspectPropEntry, InspectResult, InspectStyleEntry } from "../shared/types.js";
 
 function getOpening(el: Node): any {
   return el.getKind() === SyntaxKind.JsxElement ? (el as any).getOpeningElement() : el;
@@ -49,6 +49,30 @@ function classNameField(opening: any): InspectField | undefined {
   return { value: init?.getText() ?? "", editable: false };
 }
 
+const EXCLUDED_PROPS = new Set(["style", "className", "key", "ref", "css"]);
+
+function propEntries(opening: any): InspectPropEntry[] {
+  const out: InspectPropEntry[] = [];
+  for (const a of opening.getAttributes()) {
+    if (!Node.isJsxAttribute(a)) continue; // skip spreads {...x}
+    const name = (a as any).getNameNode().getText();
+    if (EXCLUDED_PROPS.has(name) || /^on[A-Z]/.test(name)) continue;
+    const init = (a as any).getInitializer();
+    if (!init) { out.push({ name, value: "true", editable: true, isExpr: true }); continue; } // boolean shorthand
+    if (Node.isStringLiteral(init)) { out.push({ name, value: init.getLiteralText(), editable: true, isExpr: false }); continue; }
+    if (Node.isJsxExpression(init)) {
+      const expr = init.getExpression();
+      if (expr && Node.isNumericLiteral(expr)) { out.push({ name, value: expr.getText(), editable: true, isExpr: true }); continue; }
+      if (expr && (expr.getKind() === SyntaxKind.TrueKeyword || expr.getKind() === SyntaxKind.FalseKeyword)) {
+        out.push({ name, value: expr.getText(), editable: true, isExpr: true }); continue;
+      }
+      out.push({ name, value: init.getText(), editable: false, isExpr: true }); continue; // dynamic → raw {…}, read-only
+    }
+    out.push({ name, value: init.getText?.() ?? "", editable: false, isExpr: true });
+  }
+  return out;
+}
+
 function textField(el: Node): InspectField | undefined {
   if (el.getKind() !== SyntaxKind.JsxElement) return undefined;
   const children = (el as any).getJsxChildren() as Node[];
@@ -74,6 +98,7 @@ export function inspectJsxElement(sf: SourceFile, line: number, column: number, 
     line: opening.getStartLineNumber(),
     styleEditable: editable,
     style: entries,
+    props: propEntries(op),
     className: classNameField(op),
     text: textField(el),
   };

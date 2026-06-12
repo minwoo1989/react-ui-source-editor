@@ -11,6 +11,7 @@ const snapshot: InspectOk = {
     { property: "marginTop", value: "8", editable: true },
     { property: "width", value: "theme.w", editable: false },
   ],
+  props: [],
   className: { value: "a b", editable: true },
   text: { value: "hello", editable: true },
 };

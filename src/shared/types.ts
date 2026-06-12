@@ -47,6 +47,14 @@ export interface InspectField {
   editable: boolean;
 }
 
+/** A non-style, non-className JSX attribute surfaced for editing. */
+export interface InspectPropEntry {
+  name: string;
+  value: string;     // display string
+  editable: boolean; // false for dynamic expressions (read-only)
+  isExpr: boolean;   // true when the source value was `{…}` (number/boolean/dynamic)
+}
+
 export interface InspectOk {
   status: "ok";
   /** 1-based source line of the resolved opening element (after line-offset correction). */
@@ -54,6 +62,7 @@ export interface InspectOk {
   /** false when a style attribute exists but is not an object literal (e.g. style={styles}). */
   styleEditable: boolean;
   style: InspectStyleEntry[];
+  props: InspectPropEntry[];
   /** absent when the element has no className attribute */
   className?: InspectField;
   /** absent unless the element has a single literal text child */

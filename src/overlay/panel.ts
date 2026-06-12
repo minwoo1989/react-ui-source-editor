@@ -2,7 +2,7 @@
 import type {
   EditRequest, EditResult, HistoryResult, InspectOk, InspectRequest, InspectResult,
 } from "../shared/types.js";
-import { buildEdits, type PanelState, type StyleRowState } from "./editsDiff.js";
+import { buildEdits, type PanelState, type PropRowState, type StyleRowState } from "./editsDiff.js";
 
 export interface PanelTarget { file: string; line: number; column: number; tag?: string; }
 
@@ -48,6 +48,9 @@ export function createPanel(handlers: PanelHandlers) {
       <label>style</label>
       <div id="styles"></div>
       <div class="row"><input class="k" id="newk" placeholder="property"><input class="v" id="newv" placeholder="value"></div>
+      <label>props</label>
+      <div id="props"></div>
+      <div class="row"><input class="k" id="newpk" placeholder="prop"><input class="v" id="newpv" placeholder="value"></div>
       <label>className</label><input class="full" id="cls" placeholder="(none)">
       <label>Text</label><input class="full" id="text" placeholder="(none)">
       <button class="apply" id="apply">Apply</button>
@@ -59,6 +62,7 @@ export function createPanel(handlers: PanelHandlers) {
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => root.getElementById(id) as T;
   const out = $("out");
   const stylesBox = $("styles");
+  const propsBox = $("props");
 
   // The clicked element's source path + position. `file` comes from
   // _debugSource (via fiber.ts) on selection — there is no manual file entry.
@@ -82,10 +86,25 @@ export function createPanel(handlers: PanelHandlers) {
     return row;
   }
 
+  function propRow(name: string, value: string, editable: boolean, isExpr: boolean): HTMLDivElement {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.dataset.expr = isExpr ? "1" : "";
+    row.innerHTML = `<input class="k" disabled><input class="v">`;
+    const [k, v] = Array.from(row.querySelectorAll("input")) as HTMLInputElement[];
+    k.value = name;
+    v.value = value;
+    if (!editable) v.disabled = true;
+    return row;
+  }
+
   function clearEditors() {
     stylesBox.innerHTML = "";
     $<HTMLInputElement>("newk").value = "";
     $<HTMLInputElement>("newv").value = "";
+    propsBox.innerHTML = "";
+    $<HTMLInputElement>("newpk").value = "";
+    $<HTMLInputElement>("newpv").value = "";
   }
 
   function render(res: InspectResult) {
@@ -100,6 +119,9 @@ export function createPanel(handlers: PanelHandlers) {
     out.textContent = "";
     for (const e of res.style) {
       stylesBox.appendChild(styleRow(e.property, e.value, e.editable && res.styleEditable));
+    }
+    for (const p of res.props) {
+      propsBox.appendChild(propRow(p.name, p.value, p.editable, p.isExpr));
     }
     const cls = $<HTMLInputElement>("cls");
     cls.value = res.className?.value ?? "";
@@ -120,6 +142,16 @@ export function createPanel(handlers: PanelHandlers) {
         editable: !v.disabled,
       });
     });
+    const props: PropRowState[] = [];
+    propsBox.querySelectorAll(".row").forEach((row) => {
+      const [k, v] = Array.from(row.querySelectorAll("input")) as HTMLInputElement[];
+      props.push({
+        name: k.value,
+        value: v.value,
+        editable: !v.disabled,
+        isExpr: (row as HTMLElement).dataset.expr === "1",
+      });
+    });
     const cls = $<HTMLInputElement>("cls");
     const text = $<HTMLInputElement>("text");
     return {
@@ -130,6 +162,8 @@ export function createPanel(handlers: PanelHandlers) {
       }],
       className: cls.disabled ? null : cls.value,
       text: text.disabled ? null : text.value,
+      props,
+      addedProps: [{ name: $<HTMLInputElement>("newpk").value, value: $<HTMLInputElement>("newpv").value }],
     };
   }
 

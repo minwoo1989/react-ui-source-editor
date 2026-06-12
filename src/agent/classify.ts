@@ -1,24 +1,11 @@
 // src/agent/classify.ts
 import { Node, SyntaxKind } from "ts-morph";
 import type { Edit } from "../shared/types.js";
+import { getAttribute } from "./jsxNodes.js";
 
 export interface Classification {
   safe: boolean;
   reason: string;
-}
-
-function getOpening(el: Node): Node {
-  if (el.getKind() === SyntaxKind.JsxElement) {
-    return (el as any).getOpeningElement();
-  }
-  return el; // self-closing or opening element itself
-}
-
-function getAttribute(el: Node, name: string): Node | undefined {
-  const opening = getOpening(el);
-  return (opening as any)
-    .getAttributes()
-    .find((a: Node) => Node.isJsxAttribute(a) && a.getNameNode().getText() === name);
 }
 
 function insideMap(el: Node): boolean {

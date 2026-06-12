@@ -2,16 +2,7 @@
 import { Node, SourceFile, SyntaxKind } from "ts-morph";
 import { resolveJsxElement } from "./locate.js";
 import type { InspectField, InspectPropEntry, InspectResult, InspectStyleEntry } from "../shared/types.js";
-
-function getOpening(el: Node): any {
-  return el.getKind() === SyntaxKind.JsxElement ? (el as any).getOpeningElement() : el;
-}
-
-function getAttribute(opening: any, name: string): Node | undefined {
-  return opening
-    .getAttributes()
-    .find((a: Node) => Node.isJsxAttribute(a) && a.getNameNode().getText() === name);
-}
+import { getAttribute, getOpening } from "./jsxNodes.js";
 
 function styleEntries(opening: any): { entries: InspectStyleEntry[]; editable: boolean } {
   const attr = getAttribute(opening, "style");

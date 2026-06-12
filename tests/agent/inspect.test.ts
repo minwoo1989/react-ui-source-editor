@@ -123,4 +123,24 @@ describe("inspectJsxElement", () => {
     expect(res.status).toBe("error");
     if (res.status === "error") expect(res.message).toMatch(/near line 999/);
   });
+
+  it("surfaces editable props with original-kind, excluding special attrs", () => {
+    const sf = sfOf(
+      'const C = () => (<Button type="primary" size={2} danger disabled={false} ' +
+      'onClick={fn} className="x" style={{ color: "red" }} title={dynamic}>hi</Button>);'
+    );
+    const res = inspectJsxElement(sf, 1, 18, "Button"); // "<Button" — column of "<"
+    expect(res.status).toBe("ok");
+    if (res.status !== "ok") return;
+    const byName = Object.fromEntries(res.props.map((p) => [p.name, p]));
+    expect(byName.className).toBeUndefined();
+    expect(byName.style).toBeUndefined();
+    expect(byName.onClick).toBeUndefined();
+    expect(byName.type).toEqual({ name: "type", value: "primary", editable: true, isExpr: false });
+    expect(byName.size).toEqual({ name: "size", value: "2", editable: true, isExpr: true });
+    expect(byName.danger).toEqual({ name: "danger", value: "true", editable: true, isExpr: true });
+    expect(byName.disabled).toEqual({ name: "disabled", value: "false", editable: true, isExpr: true });
+    expect(byName.title.editable).toBe(false);
+    expect(byName.title.isExpr).toBe(true);
+  });
 });

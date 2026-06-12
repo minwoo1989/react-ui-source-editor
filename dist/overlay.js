@@ -87,6 +87,12 @@
     const t = raw.trim();
     return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : t;
   }
+  function parsePropValue(raw) {
+    const t = raw.trim();
+    if (t === "true") return true;
+    if (t === "false") return false;
+    return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : t;
+  }
   function buildEdits(snapshot, state) {
     const edits = [];
     for (const row of state.style) {
@@ -103,6 +109,17 @@
     for (const a of state.added) {
       if (a.property.trim() === "" || a.value.trim() === "") continue;
       edits.push({ kind: "style", property: a.property.trim(), value: parseStyleValue(a.value) });
+    }
+    for (const row of state.props ?? []) {
+      if (!row.editable) continue;
+      const orig = snapshot.props.find((p) => p.name === row.name);
+      if (orig && row.value !== orig.value) {
+        edits.push({ kind: "prop", name: row.name, value: row.isExpr ? parsePropValue(row.value) : row.value });
+      }
+    }
+    for (const a of state.addedProps ?? []) {
+      if (a.name.trim() === "" || a.value.trim() === "") continue;
+      edits.push({ kind: "prop", name: a.name.trim(), value: parsePropValue(a.value) });
     }
     if (state.className !== null) {
       const orig = snapshot.className?.value;
@@ -149,6 +166,9 @@
       <label>style</label>
       <div id="styles"></div>
       <div class="row"><input class="k" id="newk" placeholder="property"><input class="v" id="newv" placeholder="value"></div>
+      <label>props</label>
+      <div id="props"></div>
+      <div class="row"><input class="k" id="newpk" placeholder="prop"><input class="v" id="newpv" placeholder="value"></div>
       <label>className</label><input class="full" id="cls" placeholder="(none)">
       <label>Text</label><input class="full" id="text" placeholder="(none)">
       <button class="apply" id="apply">Apply</button>
@@ -159,6 +179,7 @@
     const $ = (id) => root.getElementById(id);
     const out = $("out");
     const stylesBox = $("styles");
+    const propsBox = $("props");
     let file = null;
     let loc = null;
     let snapshot = null;
@@ -180,10 +201,24 @@
       del.onclick = () => row.classList.toggle("removed");
       return row;
     }
+    function propRow(name, value, editable, isExpr) {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.dataset.expr = isExpr ? "1" : "";
+      row.innerHTML = `<input class="k" disabled><input class="v">`;
+      const [k, v] = Array.from(row.querySelectorAll("input"));
+      k.value = name;
+      v.value = value;
+      if (!editable) v.disabled = true;
+      return row;
+    }
     function clearEditors() {
       stylesBox.innerHTML = "";
       $("newk").value = "";
       $("newv").value = "";
+      propsBox.innerHTML = "";
+      $("newpk").value = "";
+      $("newpv").value = "";
     }
     function render(res) {
       clearEditors();
@@ -197,6 +232,9 @@
       out.textContent = "";
       for (const e of res.style) {
         stylesBox.appendChild(styleRow(e.property, e.value, e.editable && res.styleEditable));
+      }
+      for (const p of res.props) {
+        propsBox.appendChild(propRow(p.name, p.value, p.editable, p.isExpr));
       }
       const cls = $("cls");
       cls.value = res.className?.value ?? "";
@@ -216,6 +254,16 @@
           editable: !v.disabled
         });
       });
+      const props = [];
+      propsBox.querySelectorAll(".row").forEach((row) => {
+        const [k, v] = Array.from(row.querySelectorAll("input"));
+        props.push({
+          name: k.value,
+          value: v.value,
+          editable: !v.disabled,
+          isExpr: row.dataset.expr === "1"
+        });
+      });
       const cls = $("cls");
       const text = $("text");
       return {
@@ -225,7 +273,9 @@
           value: $("newv").value
         }],
         className: cls.disabled ? null : cls.value,
-        text: text.disabled ? null : text.value
+        text: text.disabled ? null : text.value,
+        props,
+        addedProps: [{ name: $("newpk").value, value: $("newpv").value }]
       };
     }
     async function inspectInto() {

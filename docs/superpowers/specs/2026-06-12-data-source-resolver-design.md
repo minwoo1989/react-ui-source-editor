@@ -148,6 +148,15 @@ ran the dev server, and:
 Target `vite.config.ts`/`FloatingBar.tsx` restored; smoke script removed; servers
 stopped; ports freed.
 
+**Real React 19 confirmation (2026-06-12):** a throwaway React 19.2.7 + Vite app
+(plugin wired into `@vitejs/plugin-react`'s babel) confirmed end-to-end:
+`_debugSource` was **absent everywhere in the fiber chain** (the old path truly
+cannot work on 19), the build plugin stamped `data-source-file/line/column`, and
+with **no force flag** the overlay fell back to data-source naturally — clicking
+the probe `<div>` resolved to `App.tsx:3`, showed 6 style rows, nav disabled, and
+editing `background` → `#ffe4c4` wrote to the React-19 app's source on disk. The
+throwaway app was deleted afterward.
+
 ## Out of scope (YAGNI)
 
 - An SWC plugin (Next.js default / `plugin-react-swc`).

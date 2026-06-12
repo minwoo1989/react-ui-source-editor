@@ -68,6 +68,10 @@ A standard Babel `PluginObj` visiting `JSXOpeningElement`:
 - **Resolution order in the click handler: fiber first, data-attr fallback.**
   `nearestSourceFiber(fiberOf(el))` (React ≤18, keeps tree navigation) → if none,
   `locFromDataAttr(el)` (React 19+). If neither, `setTarget(tag, null)`.
+- A debug/test toggle `window.__uiModifierForceDataSource`: when truthy, the
+  fiber lookup is skipped so resolution goes straight to `locFromDataAttr`. This
+  lets the data-attr (React-19) path be exercised on any React version — used by
+  the fiber-independence smoke. Documented in the README as a debug aid.
 - New `selectLoc(loc, el)` in `index.ts` (the data-attr path): highlight `el`,
   `panel.setTarget(loc.tag, loc)`, `panel.setNav(false, false)` — there is no
   fiber, so tree navigation is disabled in this mode. `selectFiber` (fiber mode)
@@ -113,10 +117,11 @@ no `_debugSource` → `locFromDataAttr(el.closest(...))` → `selectLoc` → `/i
   loc from the nearest `[data-source-file]` ancestor (mock DOM with `closest`/
   `dataset`), and `undefined` when absent.
 - **Browser smoke (React 18, fiber-independence proof):** add the plugin to
-  `test-multi-window`'s vite.config (dev), launch with the **fiber path forced
-  off** (so only `locFromDataAttr` can resolve), click an element, and confirm
-  inspect → edit → HMR works purely from `data-source-*`. Restore the target's
-  vite.config and edited files afterward.
+  `test-multi-window`'s vite.config (dev), inject the overlay, set
+  `window.__uiModifierForceDataSource = true` (fiber path off), click an element,
+  and confirm the panel resolved via `data-source-*` (the `who`/rows populate and
+  nav buttons are disabled — data-attr mode) and that an edit → Apply → HMR lands
+  on disk. Restore the target's vite.config and edited files afterward.
 
 ## Out of scope (YAGNI)
 

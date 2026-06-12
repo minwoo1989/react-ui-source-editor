@@ -1,5 +1,5 @@
 // src/agent/jsxNodes.ts
-import { Node, SyntaxKind } from "ts-morph";
+import { JsxAttribute, Node, SyntaxKind } from "ts-morph";
 
 /** The opening element of a JsxElement, or the self-closing/opening node itself. */
 export function getOpening(el: Node): any {
@@ -7,8 +7,8 @@ export function getOpening(el: Node): any {
 }
 
 /** Find a JsxAttribute by name on the element's opening; undefined if absent. */
-export function getAttribute(el: Node, name: string): any {
+export function getAttribute(el: Node, name: string): JsxAttribute | undefined {
   return getOpening(el)
     .getAttributes()
-    .find((a: Node) => Node.isJsxAttribute(a) && a.getNameNode().getText() === name);
+    .find((a: Node): a is JsxAttribute => Node.isJsxAttribute(a) && a.getNameNode().getText() === name);
 }

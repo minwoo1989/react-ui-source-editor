@@ -32,7 +32,7 @@ export function classifyEdit(el: Node, edit: Edit): Classification {
   if (edit.kind === "prop") {
     const attr = getAttribute(el, edit.name);
     if (!attr) return { safe: true, reason: "new literal prop" };
-    const init = (attr as any).getInitializer();
+    const init = attr.getInitializer();
     if (!init) return { safe: true, reason: "boolean shorthand prop" };
     if (Node.isStringLiteral(init)) return { safe: true, reason: "string-literal prop" };
     if (Node.isJsxExpression(init)) {
@@ -45,7 +45,7 @@ export function classifyEdit(el: Node, edit: Edit): Classification {
   if (edit.kind === "styleRemove") {
     const attr = getAttribute(el, "style");
     if (!attr) return { safe: true, reason: "no style attr; remove is a no-op" };
-    const init = (attr as any).getInitializer();
+    const init = attr.getInitializer();
     const expr = Node.isJsxExpression(init) ? init.getExpression() : undefined;
     if (expr && Node.isObjectLiteralExpression(expr)) {
       return { safe: true, reason: "style is an object literal; can remove key" };
@@ -56,7 +56,7 @@ export function classifyEdit(el: Node, edit: Edit): Classification {
   if (edit.kind === "style") {
     const attr = getAttribute(el, "style");
     if (!attr) return { safe: true, reason: "no style attr; can add one" };
-    const init = (attr as any).getInitializer();
+    const init = attr.getInitializer();
     const expr = Node.isJsxExpression(init) ? init.getExpression() : undefined;
     if (expr && Node.isObjectLiteralExpression(expr)) {
       return { safe: true, reason: "style is an object literal; can merge" };

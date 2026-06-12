@@ -8,7 +8,7 @@ function styleEntries(opening: any): { entries: InspectStyleEntry[]; editable: b
   const attr = getAttribute(opening, "style");
   if (!attr) return { entries: [], editable: true };
 
-  const init = (attr as any).getInitializer();
+  const init = attr.getInitializer();
   const obj = Node.isJsxExpression(init) ? init.getExpression() : undefined;
   if (!obj || !Node.isObjectLiteralExpression(obj)) return { entries: [], editable: false };
 
@@ -35,7 +35,7 @@ function styleEntries(opening: any): { entries: InspectStyleEntry[]; editable: b
 function classNameField(opening: any): InspectField | undefined {
   const attr = getAttribute(opening, "className");
   if (!attr) return undefined;
-  const init = (attr as any).getInitializer();
+  const init = attr.getInitializer();
   if (init && Node.isStringLiteral(init)) return { value: init.getLiteralText(), editable: true };
   return { value: init?.getText() ?? "", editable: false };
 }

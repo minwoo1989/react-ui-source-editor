@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   fiberOf, nearestSourceFiber, parentSourceFiber, childSourceFiber,
-  locOf, domNodeOf, nameOf, type FiberLike,
+  locOf, domNodeOf, nameOf, locFromDataAttr, type FiberLike,
 } from "../../src/overlay/fiber.js";
 
 type Loc = { f: string; l: number; c: number };
@@ -111,5 +111,22 @@ describe("fiberOf", () => {
   });
   it("returns undefined when no fiber key is present", () => {
     expect(fiberOf({} as Element)).toBeUndefined();
+  });
+});
+
+describe("locFromDataAttr", () => {
+  it("reads the loc from the nearest data-source ancestor", () => {
+    const src = { tagName: "DIV", dataset: { sourceFile: "/A.tsx", sourceLine: "5", sourceColumn: "3" } };
+    const el = { closest: (s: string) => (s === "[data-source-file]" ? src : null) } as unknown as Element;
+    expect(locFromDataAttr(el)).toEqual({ file: "/A.tsx", line: 5, column: 3, tag: "div" });
+  });
+  it("returns undefined when no ancestor has the attribute", () => {
+    const el = { closest: () => null } as unknown as Element;
+    expect(locFromDataAttr(el)).toBeUndefined();
+  });
+  it("returns undefined when the line is missing/invalid", () => {
+    const src = { tagName: "DIV", dataset: { sourceFile: "/A.tsx" } };
+    const el = { closest: () => src } as unknown as Element;
+    expect(locFromDataAttr(el)).toBeUndefined();
   });
 });

@@ -81,6 +81,15 @@
   function nameOf(fiber) {
     return typeName(fiber.type) ?? "element";
   }
+  function locFromDataAttr(el) {
+    const src = el.closest("[data-source-file]");
+    if (!src) return void 0;
+    const file = src.dataset.sourceFile;
+    const line = Number(src.dataset.sourceLine);
+    if (!file || !Number.isFinite(line) || line <= 0) return void 0;
+    const column = Number(src.dataset.sourceColumn);
+    return { file, line, column: Number.isFinite(column) && column > 0 ? column : 1, tag: src.tagName.toLowerCase() };
+  }
 
   // src/overlay/editsDiff.ts
   function parseStyleValue(raw) {
@@ -479,6 +488,12 @@ ${res.reason}` : `\u274C ${res.message}`;
     void panel.setTarget(nameOf(fiber), locOf(fiber) ?? null);
     panel.setNav(!!parentSourceFiber(fiber), !!childSourceFiber(fiber));
   }
+  function selectLoc(loc, el) {
+    current = void 0;
+    inspector?.highlight(el);
+    void panel.setTarget(loc.tag ?? el.tagName.toLowerCase(), loc);
+    panel.setNav(false, false);
+  }
   var panel = createPanel({
     onInspect: sendInspect,
     onApply: sendEdit,
@@ -496,9 +511,18 @@ ${res.reason}` : `\u274C ${res.message}`;
     console.error("[ui-modifier] agent origin not detected from document.currentScript");
   } else {
     inspector = createInspector((el) => {
-      const f = nearestSourceFiber(fiberOf(el));
-      if (f) selectFiber(f);
-      else void panel.setTarget(el.tagName.toLowerCase(), null);
+      const forceData = !!window.__uiModifierForceDataSource;
+      const f = forceData ? void 0 : nearestSourceFiber(fiberOf(el));
+      if (f) {
+        selectFiber(f);
+        return;
+      }
+      const dl = locFromDataAttr(el);
+      if (dl) {
+        selectLoc(dl, el.closest("[data-source-file]") ?? el);
+        return;
+      }
+      void panel.setTarget(el.tagName.toLowerCase(), null);
     }, panel.host);
   }
   console.log("[ui-modifier] overlay ready");

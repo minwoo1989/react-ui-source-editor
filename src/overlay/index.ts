@@ -1,7 +1,7 @@
 // src/overlay/index.ts
 import {
   fiberOf, nearestSourceFiber, parentSourceFiber, childSourceFiber,
-  locOf, domNodeOf, nameOf, type FiberLike,
+  locOf, domNodeOf, nameOf, locFromDataAttr, type FiberLike, type SourceLoc,
 } from "./fiber.js";
 import { createPanel } from "./panel.js";
 import { createInspector } from "./inspector.js";
@@ -17,6 +17,14 @@ function selectFiber(fiber: FiberLike) {
   if (dom) inspector?.highlight(dom);
   void panel.setTarget(nameOf(fiber), locOf(fiber) ?? null);
   panel.setNav(!!parentSourceFiber(fiber), !!childSourceFiber(fiber));
+}
+
+// Data-attr mode (React 19+ / no fiber source): no fiber → tree navigation off.
+function selectLoc(loc: SourceLoc, el: Element) {
+  current = undefined;
+  inspector?.highlight(el);
+  void panel.setTarget(loc.tag ?? el.tagName.toLowerCase(), loc);
+  panel.setNav(false, false);
 }
 
 const panel = createPanel({
@@ -38,9 +46,12 @@ if (AGENT_ORIGIN === null) {
   console.error("[ui-modifier] agent origin not detected from document.currentScript");
 } else {
   inspector = createInspector((el) => {
-    const f = nearestSourceFiber(fiberOf(el));
-    if (f) selectFiber(f);
-    else void panel.setTarget(el.tagName.toLowerCase(), null);
+    const forceData = !!(window as unknown as { __uiModifierForceDataSource?: unknown }).__uiModifierForceDataSource;
+    const f = forceData ? undefined : nearestSourceFiber(fiberOf(el));
+    if (f) { selectFiber(f); return; }
+    const dl = locFromDataAttr(el);
+    if (dl) { selectLoc(dl, el.closest("[data-source-file]") ?? el); return; }
+    void panel.setTarget(el.tagName.toLowerCase(), null);
   }, panel.host);
 }
 

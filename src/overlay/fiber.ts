@@ -100,3 +100,14 @@ export function nameOf(fiber: FiberLike): string {
   return typeName(fiber.type) ?? "element";
 }
 
+/** Source loc from the nearest DOM ancestor carrying build-injected data-source-* attrs. */
+export function locFromDataAttr(el: Element): SourceLoc | undefined {
+  const src = el.closest("[data-source-file]") as HTMLElement | null;
+  if (!src) return undefined;
+  const file = src.dataset.sourceFile;
+  const line = Number(src.dataset.sourceLine);
+  if (!file || !Number.isFinite(line) || line <= 0) return undefined;
+  const column = Number(src.dataset.sourceColumn);
+  return { file, line, column: Number.isFinite(column) && column > 0 ? column : 1, tag: src.tagName.toLowerCase() };
+}
+

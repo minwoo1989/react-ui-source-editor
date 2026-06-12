@@ -123,6 +123,31 @@ no `_debugSource` → `locFromDataAttr(el.closest(...))` → `selectLoc` → `/i
   nav buttons are disabled — data-attr mode) and that an edit → Apply → HMR lands
   on disk. Restore the target's vite.config and edited files afterward.
 
+## Verification (2026-06-12)
+
+**Automated gate:** `npx vitest run` — 137/137 (4 `sourceAttrs` plugin tests via
+`@babel/core` + 3 `locFromDataAttr` tests). `npx tsc --noEmit` — clean.
+`npm run build:plugin` → `dist/sourceAttrs.mjs`; `npm run build:overlay` rebuilt
+`dist/overlay.js`. README added.
+
+**Browser smoke (React 18, fiber-independence proof):** wired `sourceAttrs` into
+`test-multi-window`'s `vite.config.ts` (`react({ babel: { plugins: [sourceAttrs] } })`),
+ran the dev server, and:
+
+- The DOM carried build-injected attrs, e.g.
+  `data-source-file="D:/Projects/test/test-multi-window/src/App.tsx" data-source-line="77" data-source-column="5"`
+  (forward-slash absolute path — the Babel plugin ran on the real app).
+- With `window.__uiModifierForceDataSource = true` (**fiber path off**), clicking
+  the FloatingBar `<div>` resolved purely via `data-source-*`: panel showed
+  `div — FloatingBar.tsx:15` with 12 style rows, and the ↑/↓ nav buttons were
+  disabled (data-attr mode).
+- Editing `background` → `#ffe4c4` + Apply landed on disk — **the whole
+  click → inspect → edit → HMR loop ran without touching a React fiber**, proving
+  the path works where `_debugSource` is absent (React 19+).
+
+Target `vite.config.ts`/`FloatingBar.tsx` restored; smoke script removed; servers
+stopped; ports freed.
+
 ## Out of scope (YAGNI)
 
 - An SWC plugin (Next.js default / `plugin-react-swc`).

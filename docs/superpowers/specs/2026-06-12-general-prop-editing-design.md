@@ -123,3 +123,20 @@ No change. `applyProp` (string → quoted, number/boolean → `{…}`) and
 - Editing event handlers, `key`/`ref`, `css`, or spread attributes.
 - Folding `className` into the generic prop list (kept as its own field).
 - Feature #7 (the `jsxNodes.ts` helper refactor).
+
+## Verification (2026-06-12)
+
+**Automated gate:** `npx vitest run` — 125/125 (inspect prop-surfacing tests +
+`parsePropValue`/`buildEdits` prop tests). `npx tsc --noEmit` — clean.
+`npm run build:overlay` rebuilt `dist/overlay.js` (committed). The agent
+apply path (`applyProp`/`classify`) was left untouched.
+
+**Browser smoke (Playwright + Chromium)** against `D:\Projects\test\test-multi-window`:
+clicking a FloatingBar icon button resolves (via `_debugSource`) to the inner
+`<MinusOutlined/>` (no props); pressing the **↑** nav button (feature #5) climbs
+to the wrapping `<Button>`, whose `size` prop then appears in the new **props**
+section. Editing `size` → `large` and adding a new `data-test="x"` prop, then
+Apply, produced on disk: `size="large": true` and `data-test="x": true`.
+Confirms existing-prop edit + new-prop add round-trip through the panel to the
+source file (and exercises #5 + #6 together). Target file restored; smoke script
+removed; servers stopped; ports freed.

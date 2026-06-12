@@ -1,6 +1,6 @@
-# antd UI Modifier
+# React UI Source Editor
 
-A local dev tool for inspecting and editing React/antd UIs in place. Run the agent, drop a bookmarklet onto your running app, click any element, and edit its **style / className / props / text** in an in-page panel. Changes are written back to the **source file** and Vite HMR (or your bundler's equivalent) reloads the page automatically. Also included: **Undo/Redo** across edits, and **parent/child JSX tree navigation** so you can step up or down the component tree from the clicked element.
+A local dev tool for inspecting and editing React UIs in place. Run the agent, drop a bookmarklet onto your running app, click any element, and edit its **style / className / props / text** in an in-page panel. Changes are written back to the **source file** and Vite HMR (or your bundler's equivalent) reloads the page automatically. Also included: **Undo/Redo** across edits, and **parent/child JSX tree navigation** so you can step up or down the component tree from the clicked element.
 
 ---
 
@@ -17,7 +17,7 @@ A local dev tool for inspecting and editing React/antd UIs in place. Run the age
    ```
    Serves `http://localhost:4567` (override with `PORT=…`). The console prints the port on startup.
 
-4. Open `http://localhost:4567/` and **drag the "UI Modifier" bookmarklet** to your bookmarks bar.
+4. Open `http://localhost:4567/` and **drag the "UI Source Editor" bookmarklet** to your bookmarks bar.
    > Browsers block pasting `javascript:` URLs directly, so **drag is required** — you cannot paste it into the address bar.
 
 5. Open your running app's tab (e.g. `http://localhost:3000`) and click the bookmark. Click any element to inspect and edit it.

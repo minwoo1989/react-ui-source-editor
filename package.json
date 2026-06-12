@@ -1,6 +1,7 @@
 {
-  "name": "antd-ui-modifier",
+  "name": "react-ui-source-editor",
   "version": "0.1.0",
+  "description": "A UI source editor for React",
   "private": true,
   "type": "module",
   "engines": {

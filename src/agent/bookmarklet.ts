@@ -27,7 +27,7 @@ export function landingHtml(port: number): string {
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>antd UI Modifier — overlay</title>
+<title>React UI Source Editor — overlay</title>
 <style>
   body { font: 15px/1.5 system-ui, sans-serif; max-width: 40rem; margin: 3rem auto; padding: 0 1rem; }
   code { background: #f2f2f2; padding: 0 .3em; border-radius: 3px; }
@@ -38,13 +38,13 @@ export function landingHtml(port: number): string {
 </style>
 </head>
 <body>
-<h1>antd UI Modifier</h1>
+<h1>React UI Source Editor</h1>
 <p class="meta">Agent port: <code>${port}</code></p>
 <p><strong>Drag this to your bookmarks bar:</strong></p>
-<p><a class="bm" href="${href}">UI Modifier</a></p>
+<p><a class="bm" href="${href}">UI Source Editor</a></p>
 <ol>
   <li>Open your running app tab (e.g. <code>localhost:3000</code>).</li>
-  <li>Click the <strong>UI Modifier</strong> bookmark.</li>
+  <li>Click the <strong>UI Source Editor</strong> bookmark.</li>
   <li>Click an element and edit it.</li>
 </ol>
 </body>

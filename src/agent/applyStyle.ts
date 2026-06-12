@@ -1,9 +1,6 @@
 // src/agent/applyStyle.ts
-import { Node, SyntaxKind } from "ts-morph";
-
-function getOpening(el: Node): any {
-  return el.getKind() === SyntaxKind.JsxElement ? (el as any).getOpeningElement() : el;
-}
+import { Node } from "ts-morph";
+import { getAttribute, getOpening } from "./jsxNodes.js";
 
 function literal(value: string | number): string {
   return typeof value === "number" ? String(value) : JSON.stringify(value);
@@ -11,9 +8,7 @@ function literal(value: string | number): string {
 
 export function applyStyle(el: Node, property: string, value: string | number): void {
   const opening = getOpening(el);
-  const styleAttr = opening
-    .getAttributes()
-    .find((a: Node) => Node.isJsxAttribute(a) && a.getNameNode().getText() === "style");
+  const styleAttr = getAttribute(el, "style");
 
   if (!styleAttr) {
     opening.addAttribute({ name: "style", initializer: `{{ ${property}: ${literal(value)} }}` });
@@ -41,10 +36,7 @@ export function applyStyle(el: Node, property: string, value: string | number): 
  * `applyStyle` guards with `Node.isPropertyAssignment`.
  */
 export function removeStyle(el: Node, property: string): void {
-  const opening = getOpening(el);
-  const styleAttr = opening
-    .getAttributes()
-    .find((a: Node) => Node.isJsxAttribute(a) && a.getNameNode().getText() === "style");
+  const styleAttr = getAttribute(el, "style");
   if (!styleAttr) return;
 
   const init = styleAttr.getInitializer();

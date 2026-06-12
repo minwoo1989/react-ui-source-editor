@@ -1,9 +1,6 @@
 // src/agent/applyProp.ts
-import { Node, SyntaxKind } from "ts-morph";
-
-function getOpening(el: Node): any {
-  return el.getKind() === SyntaxKind.JsxElement ? (el as any).getOpeningElement() : el;
-}
+import { Node } from "ts-morph";
+import { getAttribute, getOpening } from "./jsxNodes.js";
 
 function initializerFor(value: string | number | boolean): string {
   if (typeof value === "string") return JSON.stringify(value); // "value"
@@ -12,9 +9,7 @@ function initializerFor(value: string | number | boolean): string {
 
 export function applyProp(el: Node, name: string, value: string | number | boolean): void {
   const opening = getOpening(el);
-  const attr = opening
-    .getAttributes()
-    .find((a: Node) => Node.isJsxAttribute(a) && a.getNameNode().getText() === name);
+  const attr = getAttribute(el, name);
 
   const initText = initializerFor(value);
   if (!attr) {

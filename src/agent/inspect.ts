@@ -2,22 +2,13 @@
 import { Node, SourceFile, SyntaxKind } from "ts-morph";
 import { resolveJsxElement } from "./locate.js";
 import type { InspectField, InspectPropEntry, InspectResult, InspectStyleEntry } from "../shared/types.js";
-
-function getOpening(el: Node): any {
-  return el.getKind() === SyntaxKind.JsxElement ? (el as any).getOpeningElement() : el;
-}
-
-function getAttribute(opening: any, name: string): Node | undefined {
-  return opening
-    .getAttributes()
-    .find((a: Node) => Node.isJsxAttribute(a) && a.getNameNode().getText() === name);
-}
+import { getAttribute, getOpening } from "./jsxNodes.js";
 
 function styleEntries(opening: any): { entries: InspectStyleEntry[]; editable: boolean } {
   const attr = getAttribute(opening, "style");
   if (!attr) return { entries: [], editable: true };
 
-  const init = (attr as any).getInitializer();
+  const init = attr.getInitializer();
   const obj = Node.isJsxExpression(init) ? init.getExpression() : undefined;
   if (!obj || !Node.isObjectLiteralExpression(obj)) return { entries: [], editable: false };
 
@@ -44,7 +35,7 @@ function styleEntries(opening: any): { entries: InspectStyleEntry[]; editable: b
 function classNameField(opening: any): InspectField | undefined {
   const attr = getAttribute(opening, "className");
   if (!attr) return undefined;
-  const init = (attr as any).getInitializer();
+  const init = attr.getInitializer();
   if (init && Node.isStringLiteral(init)) return { value: init.getLiteralText(), editable: true };
   return { value: init?.getText() ?? "", editable: false };
 }

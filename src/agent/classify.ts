@@ -1,24 +1,11 @@
 // src/agent/classify.ts
 import { Node, SyntaxKind } from "ts-morph";
 import type { Edit } from "../shared/types.js";
+import { getAttribute } from "./jsxNodes.js";
 
 export interface Classification {
   safe: boolean;
   reason: string;
-}
-
-function getOpening(el: Node): Node {
-  if (el.getKind() === SyntaxKind.JsxElement) {
-    return (el as any).getOpeningElement();
-  }
-  return el; // self-closing or opening element itself
-}
-
-function getAttribute(el: Node, name: string): Node | undefined {
-  const opening = getOpening(el);
-  return (opening as any)
-    .getAttributes()
-    .find((a: Node) => Node.isJsxAttribute(a) && a.getNameNode().getText() === name);
 }
 
 function insideMap(el: Node): boolean {
@@ -45,7 +32,7 @@ export function classifyEdit(el: Node, edit: Edit): Classification {
   if (edit.kind === "prop") {
     const attr = getAttribute(el, edit.name);
     if (!attr) return { safe: true, reason: "new literal prop" };
-    const init = (attr as any).getInitializer();
+    const init = attr.getInitializer();
     if (!init) return { safe: true, reason: "boolean shorthand prop" };
     if (Node.isStringLiteral(init)) return { safe: true, reason: "string-literal prop" };
     if (Node.isJsxExpression(init)) {
@@ -58,7 +45,7 @@ export function classifyEdit(el: Node, edit: Edit): Classification {
   if (edit.kind === "styleRemove") {
     const attr = getAttribute(el, "style");
     if (!attr) return { safe: true, reason: "no style attr; remove is a no-op" };
-    const init = (attr as any).getInitializer();
+    const init = attr.getInitializer();
     const expr = Node.isJsxExpression(init) ? init.getExpression() : undefined;
     if (expr && Node.isObjectLiteralExpression(expr)) {
       return { safe: true, reason: "style is an object literal; can remove key" };
@@ -69,7 +56,7 @@ export function classifyEdit(el: Node, edit: Edit): Classification {
   if (edit.kind === "style") {
     const attr = getAttribute(el, "style");
     if (!attr) return { safe: true, reason: "no style attr; can add one" };
-    const init = (attr as any).getInitializer();
+    const init = attr.getInitializer();
     const expr = Node.isJsxExpression(init) ? init.getExpression() : undefined;
     if (expr && Node.isObjectLiteralExpression(expr)) {
       return { safe: true, reason: "style is an object literal; can merge" };

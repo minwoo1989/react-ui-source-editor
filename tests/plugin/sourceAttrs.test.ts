@@ -14,17 +14,12 @@ function run(code: string, filename = "/abs/App.tsx"): string {
   return out!.code!;
 }
 
-/** Babel resolves and escapes backslashes in JSX string literals on Windows. */
-function resolvedAttrValue(filename: string): string {
-  // resolve() normalises to OS separators; Babel then escapes each backslash once in the JSX output.
-  return resolve(filename).split("\\").join("\\\\");
-}
-
 describe("sourceAttrs babel plugin", () => {
   it("stamps data-source-* on a host element", () => {
     const inputFile = "/abs/App.tsx";
     const code = run(`const x = <div className="a">hi</div>;`, inputFile);
-    expect(code).toContain(`data-source-file="${resolvedAttrValue(inputFile)}"`);
+    const expectedFile = resolve(inputFile).replace(/\\/g, "/");
+    expect(code).toContain(`data-source-file="${expectedFile}"`);
     expect(code).toContain('data-source-line="1"');
     expect(code).toMatch(/data-source-column="\d+"/);
   });

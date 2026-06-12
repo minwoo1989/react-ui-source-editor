@@ -15,7 +15,7 @@ function sourceAttrs({ types: t }) {
           if (has(n)) return;
           path.node.attributes.push(t.jsxAttribute(t.jsxIdentifier(n), t.stringLiteral(v)));
         };
-        add("data-source-file", state.filename ?? "");
+        add("data-source-file", (state.filename ?? "").replace(/\\/g, "/"));
         add("data-source-line", String(loc.start.line));
         add("data-source-column", String(loc.start.column + 1));
       }

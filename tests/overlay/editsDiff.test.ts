@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildEdits, parseStyleValue } from "../../src/overlay/editsDiff.js";
+import { buildEdits, parseStyleValue, parsePropValue } from "../../src/overlay/editsDiff.js";
 import type { InspectOk } from "../../src/shared/types.js";
 
 const snapshot: InspectOk = {
@@ -115,5 +115,52 @@ describe("buildEdits", () => {
       { kind: "styleRemove", property: "color" },
       { kind: "style", property: "color", value: "blue" },
     ]);
+  });
+});
+
+describe("parsePropValue", () => {
+  it("parses booleans, numbers, and strings", () => {
+    expect(parsePropValue("true")).toBe(true);
+    expect(parsePropValue("false")).toBe(false);
+    expect(parsePropValue("42")).toBe(42);
+    expect(parsePropValue("primary")).toBe("primary");
+  });
+});
+
+describe("buildEdits — props", () => {
+  const snap: InspectOk = {
+    status: "ok", line: 1, styleEditable: true, style: [],
+    props: [
+      { name: "type", value: "default", editable: true, isExpr: false },
+      { name: "size", value: "2", editable: true, isExpr: true },
+      { name: "title", value: "{x}", editable: false, isExpr: true },
+    ],
+  };
+  const base = { style: [], added: [], className: null, text: null };
+
+  it("emits a string prop verbatim (kind preserved) when changed", () => {
+    const edits = buildEdits(snap, { ...base,
+      props: [{ name: "type", value: "primary", editable: true, isExpr: false }], addedProps: [] });
+    expect(edits).toContainEqual({ kind: "prop", name: "type", value: "primary" });
+  });
+
+  it("parses an isExpr prop to a number when changed", () => {
+    const edits = buildEdits(snap, { ...base,
+      props: [{ name: "size", value: "4", editable: true, isExpr: true }], addedProps: [] });
+    expect(edits).toContainEqual({ kind: "prop", name: "size", value: 4 });
+  });
+
+  it("does not emit for an unchanged or read-only prop", () => {
+    const edits = buildEdits(snap, { ...base, props: [
+      { name: "type", value: "default", editable: true, isExpr: false },
+      { name: "title", value: "{y}", editable: false, isExpr: true },
+    ], addedProps: [] });
+    expect(edits.filter((e) => e.kind === "prop")).toHaveLength(0);
+  });
+
+  it("emits an added prop, parsed", () => {
+    const edits = buildEdits(snap, { ...base, props: [],
+      addedProps: [{ name: "danger", value: "true" }] });
+    expect(edits).toContainEqual({ kind: "prop", name: "danger", value: true });
   });
 });

@@ -7,17 +7,34 @@ export interface StyleRowState {
   editable: boolean;
 }
 
+export interface PropRowState {
+  name: string;
+  value: string;
+  editable: boolean;
+  isExpr: boolean;
+}
+
 /** What the panel DOM holds at Apply time. null fields were disabled (not editable / absent). */
 export interface PanelState {
   style: StyleRowState[];
   added: { property: string; value: string }[];
   className: string | null;
   text: string | null;
+  props?: PropRowState[];
+  addedProps?: { name: string; value: string }[];
 }
 
 /** Inputs hold strings; bare numbers become numeric literals (matches applyStyle's literal()). */
 export function parseStyleValue(raw: string): string | number {
   const t = raw.trim();
+  return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : t;
+}
+
+/** Like parseStyleValue but also recognizes booleans (for `{true}`/`{false}` props). */
+export function parsePropValue(raw: string): string | number | boolean {
+  const t = raw.trim();
+  if (t === "true") return true;
+  if (t === "false") return false;
   return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : t;
 }
 
@@ -41,6 +58,18 @@ export function buildEdits(snapshot: InspectOk, state: PanelState): Edit[] {
   for (const a of state.added) {
     if (a.property.trim() === "" || a.value.trim() === "") continue;
     edits.push({ kind: "style", property: a.property.trim(), value: parseStyleValue(a.value) });
+  }
+
+  for (const row of state.props ?? []) {
+    if (!row.editable) continue;
+    const orig = snapshot.props.find((p) => p.name === row.name);
+    if (orig && row.value !== orig.value) {
+      edits.push({ kind: "prop", name: row.name, value: row.isExpr ? parsePropValue(row.value) : row.value });
+    }
+  }
+  for (const a of state.addedProps ?? []) {
+    if (a.name.trim() === "" || a.value.trim() === "") continue;
+    edits.push({ kind: "prop", name: a.name.trim(), value: parsePropValue(a.value) });
   }
 
   if (state.className !== null) {
